@@ -14,7 +14,7 @@ import {
 import { useState, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 
-export default function WeekView({ currentDate }) {
+export default function WeekView({ currentDate, weekRef }) {
   const { dispatch, getFilteredCampaigns } = useCampaigns();
   const { hasPermission } = useAuth();
   const canDrag = hasPermission('canEdit');
@@ -59,7 +59,7 @@ export default function WeekView({ currentDate }) {
   );
 
   return (
-    <div className="week-view">
+    <div className="week-view" ref={weekRef}>
       <div className="week-header">
         {days.map((day, idx) => (
           <div

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useCampaigns } from '../context/CampaignContext';
-import { X, Trash2, Palette } from 'lucide-react';
+import { X, Trash2, Palette, Edit3, Building2, AlertTriangle } from 'lucide-react';
 
 const BRAND_COLORS = [
   '#6366f1', '#8b5cf6', '#ec4899', '#ef4444', '#f97316',
@@ -23,6 +23,8 @@ export default function BrandDrawer() {
   const { state, dispatch } = useCampaigns();
   const { brandDrawerOpen, editingBrand } = state;
   const [form, setForm] = useState(emptyBrand);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (editingBrand) {
@@ -40,14 +42,17 @@ export default function BrandDrawer() {
 
   const handleSave = () => {
     if (!form.name.trim()) return;
+    setSaving(true);
     if (editingBrand) {
       dispatch({ type: 'UPDATE_BRAND', payload: { ...editingBrand, ...form } });
     } else {
       dispatch({ type: 'ADD_BRAND', payload: form });
     }
+    setSaving(false);
   };
 
   const handleDelete = () => {
+    setShowConfirm(false);
     if (editingBrand) {
       dispatch({ type: 'DELETE_BRAND', payload: editingBrand.id });
     }
@@ -63,8 +68,8 @@ export default function BrandDrawer() {
       <div className="modal-container modal-sm">
         <div className="modal-content">
           <div className="modal-header">
-            <h2>{editingBrand ? '✏️ Chỉnh Sửa Brand' : '🏢 Thêm Brand Mới'}</h2>
-            <button className="drawer-close" onClick={handleClose}>
+            <h2>{editingBrand ? <><Edit3 size={16} style={{ marginRight: 6 }} />Chỉnh Sửa Brand</> : <><Building2 size={16} style={{ marginRight: 6 }} />Thêm Brand Mới</>}</h2>
+            <button className="drawer-close" onClick={handleClose} aria-label="Đóng">
               <X size={18} />
             </button>
           </div>
@@ -153,7 +158,7 @@ export default function BrandDrawer() {
 
           <div className="modal-footer">
             {editingBrand && (
-              <button className="btn btn-danger" onClick={handleDelete}>
+              <button className="btn btn-danger" onClick={() => setShowConfirm(true)}>
                 <Trash2 size={14} />
                 Xóa Brand
               </button>
@@ -162,12 +167,28 @@ export default function BrandDrawer() {
             <button className="btn" onClick={handleClose}>
               Hủy
             </button>
-            <button className="btn btn-primary" onClick={handleSave}>
+            <button className={`btn btn-primary ${saving ? 'loading' : ''}`} onClick={handleSave} disabled={saving}>
               {editingBrand ? 'Lưu Thay Đổi' : 'Tạo Brand'}
             </button>
           </div>
         </div>
       </div>
+
+      {/* Confirm Delete Dialog */}
+      {showConfirm && (
+        <div className="confirm-overlay" onClick={() => setShowConfirm(false)}>
+          <div className="confirm-dialog" onClick={(e) => e.stopPropagation()}>
+            <h3><AlertTriangle size={18} style={{ color: 'var(--campaign-red)' }} /> Xác nhận xóa</h3>
+            <p>Bạn có chắc muốn xóa brand <strong>"{form.name}"</strong>? Tất cả chiến dịch liên quan sẽ mất liên kết.</p>
+            <div className="confirm-actions">
+              <button className="btn" onClick={() => setShowConfirm(false)}>Hủy</button>
+              <button className="btn btn-danger" onClick={handleDelete}>
+                <Trash2 size={14} /> Xóa
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
 
 /* ===== CSS Variables / Design Tokens ===== */
 :root {
@@ -14,8 +14,8 @@
   /* Text colors */
   --text-primary: #f1f5f9;
   --text-secondary: #94a3b8;
-  --text-tertiary: #64748b;
-  --text-muted: #475569;
+  --text-tertiary: #78889a;
+  --text-muted: #5a6b7d;
 
   /* Accent / brand */
   --accent: #6366f1;
@@ -26,25 +26,25 @@
   --accent-gradient: linear-gradient(135deg, #6366f1, #8b5cf6);
   --accent-hover: #a5b4fc;
 
-  /* Campaign category colors */
-  --campaign-red: #ef4444;
-  --campaign-red-bg: rgba(239, 68, 68, 0.15);
-  --campaign-red-border: rgba(239, 68, 68, 0.3);
-  --campaign-blue: #3b82f6;
-  --campaign-blue-bg: rgba(59, 130, 246, 0.15);
-  --campaign-blue-border: rgba(59, 130, 246, 0.3);
-  --campaign-yellow: #f59e0b;
-  --campaign-yellow-bg: rgba(245, 158, 11, 0.15);
-  --campaign-yellow-border: rgba(245, 158, 11, 0.3);
-  --campaign-purple: #a855f7;
-  --campaign-purple-bg: rgba(168, 85, 247, 0.15);
-  --campaign-purple-border: rgba(168, 85, 247, 0.3);
-  --campaign-orange: #f97316;
-  --campaign-orange-bg: rgba(249, 115, 22, 0.15);
-  --campaign-orange-border: rgba(249, 115, 22, 0.3);
-  --campaign-green: #10b981;
-  --campaign-green-bg: rgba(16, 185, 129, 0.15);
-  --campaign-green-border: rgba(16, 185, 129, 0.3);
+  /* Campaign category colors - high contrast */
+  --campaign-red: #f87171;
+  --campaign-red-bg: rgba(239, 68, 68, 0.22);
+  --campaign-red-border: rgba(239, 68, 68, 0.5);
+  --campaign-blue: #60a5fa;
+  --campaign-blue-bg: rgba(59, 130, 246, 0.22);
+  --campaign-blue-border: rgba(59, 130, 246, 0.5);
+  --campaign-yellow: #fbbf24;
+  --campaign-yellow-bg: rgba(245, 158, 11, 0.22);
+  --campaign-yellow-border: rgba(245, 158, 11, 0.5);
+  --campaign-purple: #c084fc;
+  --campaign-purple-bg: rgba(168, 85, 247, 0.22);
+  --campaign-purple-border: rgba(168, 85, 247, 0.5);
+  --campaign-orange: #fb923c;
+  --campaign-orange-bg: rgba(249, 115, 22, 0.22);
+  --campaign-orange-border: rgba(249, 115, 22, 0.5);
+  --campaign-green: #34d399;
+  --campaign-green-bg: rgba(16, 185, 129, 0.22);
+  --campaign-green-border: rgba(16, 185, 129, 0.5);
 
   /* Borders */
   --border-color: rgba(255, 255, 255, 0.06);
@@ -77,10 +77,10 @@
   --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
 
   /* Typography */
-  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-xs: 0.7rem;
-  --font-sm: 0.8rem;
-  --font-base: 0.9rem;
+  --font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-xs: 0.75rem;
+  --font-sm: 0.85rem;
+  --font-base: 0.95rem;
   --font-md: 1rem;
   --font-lg: 1.15rem;
   --font-xl: 1.5rem;
@@ -179,9 +179,8 @@ body {
   align-items: center;
   justify-content: center;
   color: white;
-  font-weight: 800;
-  font-size: var(--font-lg);
   box-shadow: var(--shadow-glow);
+  flex-shrink: 0;
 }
 
 .sidebar-logo h1 {
@@ -284,6 +283,8 @@ body {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  min-width: 0;
+  overflow-x: hidden;
 }
 
 /* ===== Header ===== */
@@ -469,6 +470,7 @@ body {
   flex: 1;
   padding: var(--space-lg) var(--space-xl);
   overflow: auto;
+  min-width: 0;
 }
 
 .calendar-grid {
@@ -501,7 +503,7 @@ body {
 }
 
 .calendar-day {
-  min-height: 120px;
+  min-height: 140px;
   border-right: 1px solid var(--border-color);
   border-bottom: 1px solid var(--border-color);
   padding: var(--space-xs);
@@ -519,7 +521,11 @@ body {
 }
 
 .calendar-day.other-month {
-  opacity: 0.3;
+  opacity: 1;
+}
+
+.calendar-day.past-day {
+  opacity: 0.4;
 }
 
 .calendar-day.today {
@@ -539,8 +545,8 @@ body {
 
 .day-number {
   font-size: var(--font-sm);
-  font-weight: 500;
-  color: var(--text-secondary);
+  font-weight: 600;
+  color: var(--text-primary);
   padding: 2px 6px;
   margin-bottom: var(--space-xs);
 }
@@ -553,10 +559,10 @@ body {
 
 /* ===== Campaign Bar ===== */
 .campaign-bar {
-  padding: 3px 8px;
+  padding: 4px 8px;
   border-radius: var(--radius-sm);
   font-size: var(--font-xs);
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   transition: all var(--transition-fast);
   white-space: nowrap;
@@ -754,6 +760,8 @@ body {
   border-radius: var(--radius-lg);
   border: 1px solid var(--border-color);
   overflow-x: auto;
+  overflow-y: hidden;
+  min-width: 0;
 }
 
 .timeline-header {
@@ -775,6 +783,10 @@ body {
   color: var(--text-tertiary);
   display: flex;
   align-items: center;
+  position: sticky;
+  left: 0;
+  background: var(--bg-secondary);
+  z-index: 5;
   flex-shrink: 0;
 }
 
@@ -799,8 +811,9 @@ body {
 }
 
 .timeline-date-cell .date-weekday {
-  font-size: 0.6rem;
+  font-size: 0.65rem;
   text-transform: uppercase;
+  letter-spacing: -0.01em;
 }
 
 .timeline-date-cell.today {
@@ -840,6 +853,10 @@ body {
   gap: var(--space-sm);
   flex-shrink: 0;
   cursor: pointer;
+  position: sticky;
+  left: 0;
+  background: var(--bg-card);
+  z-index: 5;
 }
 
 .timeline-row-label .campaign-dot {
@@ -2528,8 +2545,9 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.4rem;
+  color: white;
   box-shadow: var(--shadow-glow);
+  flex-shrink: 0;
 }
 
 .login-logo h1 {
@@ -2951,4 +2969,154 @@ body {
   justify-content: center;
   font-size: 20px;
   flex-shrink: 0;
+}
+
+/* ===== Cursor Pointer for Interactive Elements ===== */
+.timeline-bar,
+.timeline-row-label,
+.detail-milestone,
+.filter-chip,
+.channel-chip,
+.brand-emoji-btn,
+.brand-color-btn {
+  cursor: pointer;
+}
+
+/* ===== Confirm Dialog ===== */
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn var(--transition-fast) ease;
+}
+
+.confirm-dialog {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xl);
+  padding: var(--space-xl);
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.5);
+  animation: modalSlideUp var(--transition-base) ease;
+}
+
+.confirm-dialog h3 {
+  font-size: var(--font-lg);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: var(--space-sm);
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.confirm-dialog p {
+  font-size: var(--font-base);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-lg);
+  line-height: 1.5;
+}
+
+.confirm-actions {
+  display: flex;
+  gap: var(--space-sm);
+  justify-content: flex-end;
+}
+
+/* ===== Mobile Sidebar Toggle ===== */
+.sidebar-mobile-toggle {
+  display: none;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  background: var(--bg-glass);
+  color: var(--text-secondary);
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.sidebar-mobile-toggle:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.sidebar-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 99;
+}
+
+@media (max-width: 1024px) {
+  .sidebar-mobile-toggle {
+    display: flex;
+  }
+
+  .sidebar-backdrop.visible {
+    display: block;
+  }
+}
+
+/* ===== Loading Button State ===== */
+.btn.loading {
+  opacity: 0.7;
+  pointer-events: none;
+  position: relative;
+}
+
+.btn.loading::after {
+  content: '';
+  width: 14px;
+  height: 14px;
+  border: 2px solid transparent;
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  margin-left: var(--space-xs);
+}
+
+/* ===== Prefers Reduced Motion ===== */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .modal-content,
+  .modal-overlay,
+  .modal-container,
+  .drawer,
+  .drawer-overlay,
+  .sidebar {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .campaign-bar:hover {
+    transform: none;
+  }
+
+  .timeline-bar:hover {
+    transform: none;
+  }
+
+  .brand-emoji-btn:hover,
+  .brand-color-btn:hover {
+    transform: none;
+  }
 }

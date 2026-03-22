@@ -15,7 +15,7 @@ import {
 import { useState, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 
-export default function MonthView({ currentDate }) {
+export default function MonthView({ currentDate, monthRef }) {
   const { state, dispatch, getFilteredCampaigns, getBrandById } = useCampaigns();
   const { hasPermission } = useAuth();
   const canDrag = hasPermission('canEdit');
@@ -60,7 +60,7 @@ export default function MonthView({ currentDate }) {
   );
 
   return (
-    <div className="calendar-grid">
+    <div className="calendar-grid" ref={monthRef}>
       <div className="calendar-weekdays">
         {['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'].map((d) => (
           <div key={d} className="weekday-header">
@@ -73,12 +73,13 @@ export default function MonthView({ currentDate }) {
           const dayCampaigns = getCampaignsForDay(campaigns, day);
           const isOther = !isSameMonth(day, currentDate);
           const isTodayDay = isToday(day);
+          const isPast = day < new Date(new Date().setHours(0, 0, 0, 0)) && !isTodayDay;
           const isDragOver = dragOverDate && isSameDay(day, dragOverDate);
 
           return (
             <div
               key={idx}
-              className={`calendar-day ${isOther ? 'other-month' : ''} ${isTodayDay ? 'today' : ''} ${isDragOver ? 'drag-over' : ''}`}
+              className={`calendar-day ${isPast ? 'past-day' : ''} ${isTodayDay ? 'today' : ''} ${isDragOver ? 'drag-over' : ''}`}
               onDragOver={(e) => handleDragOver(e, day)}
               onDrop={(e) => handleDrop(e, day)}
               onClick={() => dispatch({ type: 'OPEN_DRAWER', payload: null })}
@@ -91,7 +92,7 @@ export default function MonthView({ currentDate }) {
                 )}
               </div>
               <div className="day-events">
-                {dayCampaigns.slice(0, 3).map((campaign) => {
+                {dayCampaigns.map((campaign) => {
                   const start = parseISO(campaign.startDate);
                   const end = parseISO(campaign.endDate);
                   const isFirstDay = isSameDay(day, start);
@@ -124,11 +125,6 @@ export default function MonthView({ currentDate }) {
                     </div>
                   );
                 })}
-                {dayCampaigns.length > 3 && (
-                  <div className="campaign-more">
-                    +{dayCampaigns.length - 3} more
-                  </div>
-                )}
               </div>
             </div>
           );

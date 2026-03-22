@@ -10,6 +10,7 @@ import {
   isSameDay,
 } from '../utils/dateUtils';
 import { useRef } from 'react';
+import { CalendarDays } from 'lucide-react';
 
 export default function TimelineView({ currentDate, timelineRef }) {
   const { dispatch, getFilteredCampaigns } = useCampaigns();
@@ -70,7 +71,9 @@ export default function TimelineView({ currentDate, timelineRef }) {
       <div className="timeline-body">
         {campaigns.length === 0 ? (
           <div className="empty-state" style={{ minHeight: '200px' }}>
-            <p>Không có chiến dịch nào. Thêm chiến dịch mới để bắt đầu!</p>
+            <CalendarDays size={48} />
+            <h3>Chưa có chiến dịch</h3>
+            <p>Thêm chiến dịch mới để bắt đầu quản lý timeline của bạn.</p>
           </div>
         ) : (
           campaigns.map((campaign) => {

@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useCampaigns } from '../context/CampaignContext';
 import { useAuth } from '../context/AuthContext';
+import { supabase } from '../lib/supabase';
 import { CATEGORIES, CHANNELS, getCategoryColor } from '../utils/dateUtils';
 import DatePicker from './DatePicker';
-import { X, Plus, Trash2, Calendar, MessageCircle, Target, DollarSign, Milestone, Building2, ImagePlus, XCircle, FileText, Bold, Italic, List, ListOrdered, Heading2, Heading3, Quote, Minus, Link } from 'lucide-react';
+import { X, Plus, Trash2, Calendar, MessageCircle, Target, DollarSign, Milestone, Building2, ImagePlus, XCircle, FileText, Bold, Italic, List, ListOrdered, Heading2, Heading3, Quote, Minus, Link, AlertTriangle } from 'lucide-react';
 
 const emptyForm = {
   name: '',
@@ -28,6 +29,8 @@ export default function CampaignDrawer() {
   const canEdit = hasPermission('canEdit');
   const canDelete = hasPermission('canDelete');
   const [form, setForm] = useState(emptyForm);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [saving, setSaving] = useState(false);
   const fileInputRef = useRef(null);
   const detailsRef = useRef(null);
 
@@ -122,44 +125,58 @@ export default function CampaignDrawer() {
     }));
   };
 
-  // Media handlers
-  const handleMediaUpload = (e) => {
+  // Media handlers - upload to Supabase Storage
+  const handleMediaUpload = async (e) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
 
-    files.forEach((file) => {
-      if (!file.type.startsWith('image/')) return;
-      const reader = new FileReader();
-      reader.onload = (ev) => {
+    for (const file of files) {
+      if (!file.type.startsWith('image/')) continue;
+      const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const filePath = `campaigns/${Date.now()}-${safeName}`;
+      const { error } = await supabase.storage
+        .from('campaign-media')
+        .upload(filePath, file);
+      if (!error) {
+        const { data: urlData } = supabase.storage
+          .from('campaign-media')
+          .getPublicUrl(filePath);
         setForm((prev) => ({
           ...prev,
-          media: [...(prev.media || []), ev.target.result],
+          media: [...(prev.media || []), urlData.publicUrl],
         }));
-      };
-      reader.readAsDataURL(file);
-    });
-    // Reset input
+      }
+    }
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const removeMedia = (idx) => {
+  const removeMedia = async (idx) => {
+    const url = form.media[idx];
+    // Try to delete from storage
+    const match = url?.split('/campaign-media/')[1];
+    if (match) {
+      await supabase.storage.from('campaign-media').remove([decodeURIComponent(match)]);
+    }
     setForm((prev) => ({
       ...prev,
       media: prev.media.filter((_, i) => i !== idx),
     }));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.name.trim() || !form.startDate || !form.endDate) return;
+    setSaving(true);
 
     if (isNewCampaign) {
-      dispatch({ type: 'ADD_CAMPAIGN', payload: form });
+      await dispatch({ type: 'ADD_CAMPAIGN', payload: form });
     } else {
-      dispatch({ type: 'UPDATE_CAMPAIGN', payload: form });
+      await dispatch({ type: 'UPDATE_CAMPAIGN', payload: form });
     }
+    setSaving(false);
   };
 
   const handleDelete = () => {
+    setShowConfirm(false);
     if (selectedCampaign) {
       dispatch({ type: 'DELETE_CAMPAIGN', payload: selectedCampaign.id });
     }
@@ -185,9 +202,9 @@ export default function CampaignDrawer() {
                   {brand.logo} {brand.name}
                 </span>
               )}
-              <h2>{isNewCampaign ? '✨ Chiến Dịch Mới' : '📝 Chi Tiết Chiến Dịch'}</h2>
+              <h2>{isNewCampaign ? <><Plus size={16} style={{ marginRight: 6 }} />Chiến Dịch Mới</> : <><FileText size={16} style={{ marginRight: 6 }} />Chi Tiết Chiến Dịch</>}</h2>
             </div>
-            <button className="drawer-close" onClick={handleClose}>
+            <button className="drawer-close" onClick={handleClose} aria-label="Đóng">
               <X size={18} />
             </button>
           </div>
@@ -449,7 +466,7 @@ export default function CampaignDrawer() {
           {/* Footer */}
           <div className="modal-footer">
             {selectedCampaign && canDelete && (
-              <button className="btn btn-danger" onClick={handleDelete}>
+              <button className="btn btn-danger" onClick={() => setShowConfirm(true)}>
                 <Trash2 size={14} />
                 Xóa Chiến Dịch
               </button>
@@ -459,13 +476,29 @@ export default function CampaignDrawer() {
               Hủy
             </button>
             {canEdit && (
-              <button className="btn btn-primary" onClick={handleSave}>
+              <button className={`btn btn-primary ${saving ? 'loading' : ''}`} onClick={handleSave} disabled={saving}>
                 {isNewCampaign ? 'Tạo Chiến Dịch' : 'Lưu Thay Đổi'}
               </button>
             )}
           </div>
         </div>
       </div>
+
+      {/* Confirm Delete Dialog */}
+      {showConfirm && (
+        <div className="confirm-overlay" onClick={() => setShowConfirm(false)}>
+          <div className="confirm-dialog" onClick={(e) => e.stopPropagation()}>
+            <h3><AlertTriangle size={18} style={{ color: 'var(--campaign-red)' }} /> Xác nhận xóa</h3>
+            <p>Bạn có chắc muốn xóa chiến dịch <strong>"{form.name}"</strong>? Hành động này không thể hoàn tác.</p>
+            <div className="confirm-actions">
+              <button className="btn" onClick={() => setShowConfirm(false)}>Hủy</button>
+              <button className="btn btn-danger" onClick={handleDelete}>
+                <Trash2 size={14} /> Xóa
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

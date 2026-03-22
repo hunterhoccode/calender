@@ -1,11 +1,13 @@
+import { useState } from 'react';
 import { marked } from 'marked';
+import DOMPurify from 'dompurify';
 import { useCampaigns } from '../context/CampaignContext';
 import { useAuth } from '../context/AuthContext';
 import { getCategoryColor, CATEGORIES } from '../utils/dateUtils';
 import {
   X, Edit3, Trash2, Calendar, MessageCircle, Target, DollarSign,
   Building2, CheckCircle2, Circle, AlertTriangle, Clock, ImageIcon,
-  Users, StickyNote, Milestone as MilestoneIcon, FileText,
+  Users, StickyNote, Milestone as MilestoneIcon, FileText, Zap,
 } from 'lucide-react';
 
 // Configure marked for safe rendering
@@ -18,6 +20,8 @@ export default function CampaignDetailModal() {
   const { state, dispatch, getBrandById } = useCampaigns();
   const { hasPermission } = useAuth();
   const { detailOpen, viewingCampaign } = state;
+
+  const [showConfirm, setShowConfirm] = useState(false);
 
   if (!detailOpen || !viewingCampaign) return null;
 
@@ -42,7 +46,10 @@ export default function CampaignDetailModal() {
 
   const handleClose = () => dispatch({ type: 'CLOSE_DETAIL' });
   const handleEdit = () => dispatch({ type: 'OPEN_DRAWER', payload: campaign });
-  const handleDelete = () => dispatch({ type: 'DELETE_CAMPAIGN', payload: campaign.id });
+  const handleDelete = () => {
+    setShowConfirm(false);
+    dispatch({ type: 'DELETE_CAMPAIGN', payload: campaign.id });
+  };
   const handleToggleMilestone = (msId) => {
     dispatch({ type: 'TOGGLE_MILESTONE', payload: { campaignId: campaign.id, milestoneId: msId } });
   };
@@ -65,9 +72,9 @@ export default function CampaignDetailModal() {
   };
 
   const statusConfig = {
-    active: { label: 'Đang chạy', color: 'var(--campaign-green)', bg: 'var(--campaign-green-bg)', icon: '⚡' },
-    upcoming: { label: 'Sắp tới', color: 'var(--campaign-blue)', bg: 'var(--campaign-blue-bg)', icon: '🕐' },
-    completed: { label: 'Hoàn thành', color: 'var(--text-tertiary)', bg: 'var(--bg-glass)', icon: '✅' },
+    active: { label: 'Đang chạy', color: 'var(--campaign-green)', bg: 'var(--campaign-green-bg)', Icon: Zap },
+    upcoming: { label: 'Sắp tới', color: 'var(--campaign-blue)', bg: 'var(--campaign-blue-bg)', Icon: Clock },
+    completed: { label: 'Hoàn thành', color: 'var(--text-tertiary)', bg: 'var(--bg-glass)', Icon: CheckCircle2 },
   };
   const status = isActive ? 'active' : isUpcoming ? 'upcoming' : 'completed';
   const st = statusConfig[status];
@@ -90,7 +97,7 @@ export default function CampaignDetailModal() {
                   {categoryLabel}
                 </span>
                 <span className="detail-status-badge" style={{ background: st.bg, color: st.color }}>
-                  {st.icon} {st.label}
+                  <st.Icon size={12} /> {st.label}
                 </span>
               </div>
               <div className="detail-header-actions">
@@ -100,7 +107,7 @@ export default function CampaignDetailModal() {
                     Sửa
                   </button>
                 )}
-                <button className="drawer-close" onClick={handleClose}>
+                <button className="drawer-close" onClick={handleClose} aria-label="Đóng">
                   <X size={18} />
                 </button>
               </div>
@@ -162,7 +169,7 @@ export default function CampaignDetailModal() {
                   </div>
                   <div
                     className="detail-content-block md-rendered"
-                    dangerouslySetInnerHTML={{ __html: marked.parse(campaign.details) }}
+                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(marked.parse(campaign.details)) }}
                   />
                 </div>
               )}
@@ -323,7 +330,7 @@ export default function CampaignDetailModal() {
 
               {/* Delete */}
               {hasPermission('canDelete') && (
-                <button className="btn btn-danger" onClick={handleDelete} style={{ width: '100%', justifyContent: 'center' }}>
+                <button className="btn btn-danger" onClick={() => setShowConfirm(true)} style={{ width: '100%', justifyContent: 'center' }}>
                   <Trash2 size={14} />
                   Xóa Chiến Dịch
                 </button>
@@ -332,6 +339,22 @@ export default function CampaignDetailModal() {
           </div>
         </div>
       </div>
+
+      {/* Confirm Delete Dialog */}
+      {showConfirm && (
+        <div className="confirm-overlay" onClick={() => setShowConfirm(false)}>
+          <div className="confirm-dialog" onClick={(e) => e.stopPropagation()}>
+            <h3><AlertTriangle size={18} style={{ color: 'var(--campaign-red)' }} /> Xác nhận xóa</h3>
+            <p>Bạn có chắc muốn xóa chiến dịch <strong>"{campaign.name}"</strong>? Hành động này không thể hoàn tác.</p>
+            <div className="confirm-actions">
+              <button className="btn" onClick={() => setShowConfirm(false)}>Hủy</button>
+              <button className="btn btn-danger" onClick={handleDelete}>
+                <Trash2 size={14} /> Xóa
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

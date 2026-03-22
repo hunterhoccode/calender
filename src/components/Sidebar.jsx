@@ -19,7 +19,7 @@ import {
   History,
 } from 'lucide-react';
 
-export default function Sidebar({ currentView, onViewChange, onOpenChangelog }) {
+export default function Sidebar({ currentView, onViewChange, onOpenChangelog, isOpen }) {
   const { state, dispatch, getFilteredCampaigns } = useCampaigns();
   const { hasPermission, dispatch: authDispatch } = useAuth();
   const { campaigns, brands, activeBrandId } = state;
@@ -41,11 +41,11 @@ export default function Sidebar({ currentView, onViewChange, onOpenChangelog }) 
   };
 
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
       {/* Logo */}
       <div className="sidebar-header">
         <div className="sidebar-logo">
-          <div className="logo-icon">⚡</div>
+          <div className="logo-icon"><Zap size={18} /></div>
           <div>
             <h1>CMP PRO</h1>
             <div className="subtitle">Campaign Manager</div>

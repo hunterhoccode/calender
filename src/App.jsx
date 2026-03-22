@@ -36,6 +36,14 @@ function AppContent() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [changelogOpen, setChangelogOpen] = useState(false);
   const timelineRef = useRef(null);
+  const monthRef = useRef(null);
+  const weekRef = useRef(null);
+
+  const getExportRef = () => {
+    if (currentView === 'timeline') return timelineRef;
+    if (currentView === 'week') return weekRef;
+    return monthRef;
+  };
 
   const navigatePrev = () => {
     if (currentView === 'week') {
@@ -68,6 +76,12 @@ function AppContent() {
 
   return (
     <div className="app-layout">
+      {/* Sidebar Backdrop (mobile) */}
+      <div
+        className={`sidebar-backdrop ${sidebarOpen ? 'visible' : ''}`}
+        onClick={() => setSidebarOpen(false)}
+      />
+
       {/* Sidebar */}
       <Sidebar
         currentView={currentView}
@@ -76,6 +90,7 @@ function AppContent() {
           setSidebarOpen(false);
         }}
         onOpenChangelog={() => setChangelogOpen(true)}
+        isOpen={sidebarOpen}
       />
 
       {/* Main */}
@@ -84,19 +99,19 @@ function AppContent() {
         <header className="header">
           <div className="header-left">
             <button
-              className="btn"
-              style={{ display: 'none' }}
+              className="sidebar-mobile-toggle"
               onClick={() => setSidebarOpen(!sidebarOpen)}
+              aria-label="Mở menu"
             >
-              <Menu size={16} />
+              <Menu size={18} />
             </button>
 
             <div className="header-nav-date">
-              <button className="nav-btn" onClick={navigatePrev}>
+              <button className="nav-btn" onClick={navigatePrev} aria-label="Kỳ trước">
                 <ChevronLeft size={16} />
               </button>
               <span className="current-period">{getPeriodLabel()}</span>
-              <button className="nav-btn" onClick={navigateNext}>
+              <button className="nav-btn" onClick={navigateNext} aria-label="Kỳ sau">
                 <ChevronRight size={16} />
               </button>
             </div>
@@ -120,9 +135,7 @@ function AppContent() {
               ))}
             </div>
 
-            {currentView === 'timeline' && (
-              <ExportButton targetRef={timelineRef} />
-            )}
+            <ExportButton targetRef={getExportRef()} />
           </div>
         </header>
 
@@ -131,8 +144,8 @@ function AppContent() {
 
         {/* Calendar View */}
         <div className="calendar-container">
-          {currentView === 'month' && <MonthView currentDate={currentDate} />}
-          {currentView === 'week' && <WeekView currentDate={currentDate} />}
+          {currentView === 'month' && <MonthView currentDate={currentDate} monthRef={monthRef} />}
+          {currentView === 'week' && <WeekView currentDate={currentDate} weekRef={weekRef} />}
           {currentView === 'timeline' && (
             <TimelineView currentDate={currentDate} timelineRef={timelineRef} />
           )}
@@ -150,7 +163,19 @@ function AppContent() {
 }
 
 function AuthGate() {
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="login-page">
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+          <div className="spinner" />
+          <p style={{ color: 'var(--text-secondary)', fontSize: 'var(--font-sm)' }}>Đang tải...</p>
+        </div>
+      </div>
+    );
+  }
+
   return isLoggedIn ? <AppContent /> : <LoginPage />;
 }
 

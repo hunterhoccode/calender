@@ -1,9 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { supabase } from '../lib/supabase';
 
 const ChangeLogContext = createContext();
-
-const STORAGE_KEY = 'marketing-calendar-changelog';
-const MAX_LOGS = 500;
 
 const ACTION_LABELS = {
   ADD_CAMPAIGN: 'Tạo chiến dịch',
@@ -16,38 +14,75 @@ const ACTION_LABELS = {
   DELETE_BRAND: 'Xóa thương hiệu',
 };
 
-function loadLogs() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-}
-
 export function ChangeLogProvider({ children }) {
-  const [logs, setLogs] = useState(loadLogs);
+  const [logs, setLogs] = useState([]);
 
+  // Load logs from Supabase
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(logs.slice(0, MAX_LOGS)));
-  }, [logs]);
+    async function loadLogs() {
+      const { data } = await supabase
+        .from('changelog')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(500);
+      if (data) {
+        setLogs(data.map((row) => ({
+          id: row.id,
+          userId: row.user_id,
+          username: row.username,
+          userRole: row.user_role,
+          action: row.action,
+          actionLabel: row.action_label,
+          targetName: row.target_name,
+          details: row.details,
+          timestamp: row.created_at,
+        })));
+      }
+    }
+    loadLogs();
 
-  const addLog = useCallback((user, action, targetName, details = null) => {
-    const entry = {
-      id: 'log-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
-      userId: user?.id || 'unknown',
-      username: user?.displayName || user?.username || 'Unknown',
-      userRole: user?.role || 'viewer',
-      action,
-      actionLabel: ACTION_LABELS[action] || action,
-      targetName: targetName || '',
-      details,
-      timestamp: new Date().toISOString(),
-    };
-    setLogs((prev) => [entry, ...prev].slice(0, MAX_LOGS));
+    // Real-time subscription
+    const channel = supabase
+      .channel('changelog-changes')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'changelog' }, (payload) => {
+        const row = payload.new;
+        const entry = {
+          id: row.id,
+          userId: row.user_id,
+          username: row.username,
+          userRole: row.user_role,
+          action: row.action,
+          actionLabel: row.action_label,
+          targetName: row.target_name,
+          details: row.details,
+          timestamp: row.created_at,
+        };
+        setLogs((prev) => {
+          if (prev.some((l) => l.id === entry.id)) return prev;
+          return [entry, ...prev].slice(0, 500);
+        });
+      })
+      .subscribe();
+
+    return () => supabase.removeChannel(channel);
   }, []);
 
-  const clearLogs = useCallback(() => {
+  const addLog = useCallback(async (user, action, targetName, details = null) => {
+    const entry = {
+      user_id: user?.id || null,
+      username: user?.displayName || user?.username || 'Unknown',
+      user_role: user?.role || 'viewer',
+      action,
+      action_label: ACTION_LABELS[action] || action,
+      target_name: targetName || '',
+      details,
+    };
+
+    await supabase.from('changelog').insert(entry);
+  }, []);
+
+  const clearLogs = useCallback(async () => {
+    await supabase.from('changelog').delete().neq('id', '00000000-0000-0000-0000-000000000000');
     setLogs([]);
   }, []);
 

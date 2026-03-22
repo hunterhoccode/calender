@@ -1,37 +1,15 @@
 import { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
-import sampleCampaigns, { sampleBrands } from '../data/sampleData';
+import { supabase } from '../lib/supabase';
+import { mapCampaignFromDb } from '../lib/dbMappers';
 import { useAuth } from './AuthContext';
 import { useChangeLog } from './ChangeLogContext';
 
 const CampaignContext = createContext(null);
 
-const STORAGE_KEY = 'marketing-calendar-campaigns';
-const BRANDS_STORAGE_KEY = 'marketing-calendar-brands';
-
-const loadFromStorage = (key) => {
-  try {
-    const stored = localStorage.getItem(key);
-    if (stored) {
-      return JSON.parse(stored);
-    }
-  } catch (e) {
-    console.warn('Failed to load from localStorage:', e);
-  }
-  return null;
-};
-
-const saveToStorage = (key, data) => {
-  try {
-    localStorage.setItem(key, JSON.stringify(data));
-  } catch (e) {
-    console.warn('Failed to save to localStorage:', e);
-  }
-};
-
 const initialState = {
-  campaigns: loadFromStorage(STORAGE_KEY) || sampleCampaigns,
-  brands: loadFromStorage(BRANDS_STORAGE_KEY) || sampleBrands,
-  activeBrandId: null, // null = show all brands
+  campaigns: [],
+  brands: [],
+  activeBrandId: null,
   filters: {
     categories: [],
     status: null,
@@ -44,131 +22,53 @@ const initialState = {
   viewingCampaign: null,
   brandDrawerOpen: false,
   editingBrand: null,
+  dataLoaded: false,
 };
 
 function campaignReducer(state, action) {
   switch (action.type) {
-    // ===== Campaign Actions =====
-    case 'ADD_CAMPAIGN': {
-      const newCampaign = {
-        ...action.payload,
-        id: Date.now().toString(),
-        brandId: action.payload.brandId || state.activeBrandId || (state.brands[0]?.id ?? null),
-      };
+    // ===== Data Loading =====
+    case 'SET_INITIAL_DATA':
       return {
         ...state,
-        campaigns: [...state.campaigns, newCampaign],
-        drawerOpen: false,
-        selectedCampaign: null,
-        isNewCampaign: false,
+        campaigns: action.payload.campaigns,
+        brands: action.payload.brands,
+        dataLoaded: true,
       };
+    case 'SET_CAMPAIGNS':
+      return { ...state, campaigns: action.payload };
+    case 'SET_BRANDS':
+      return { ...state, brands: action.payload };
+
+    // ===== Realtime upsert/remove =====
+    case 'UPSERT_CAMPAIGN': {
+      const exists = state.campaigns.find((c) => c.id === action.payload.id);
+      const campaigns = exists
+        ? state.campaigns.map((c) => c.id === action.payload.id ? action.payload : c)
+        : [...state.campaigns, action.payload];
+      const viewingCampaign = state.viewingCampaign?.id === action.payload.id
+        ? action.payload
+        : state.viewingCampaign;
+      return { ...state, campaigns, viewingCampaign };
     }
-    case 'UPDATE_CAMPAIGN': {
-      return {
-        ...state,
-        campaigns: state.campaigns.map((c) =>
-          c.id === action.payload.id ? action.payload : c
-        ),
-        drawerOpen: false,
-        selectedCampaign: null,
-      };
-    }
-    case 'DELETE_CAMPAIGN': {
+    case 'REMOVE_CAMPAIGN': {
       return {
         ...state,
         campaigns: state.campaigns.filter((c) => c.id !== action.payload),
-        drawerOpen: false,
-        selectedCampaign: null,
+        drawerOpen: state.selectedCampaign?.id === action.payload ? false : state.drawerOpen,
+        selectedCampaign: state.selectedCampaign?.id === action.payload ? null : state.selectedCampaign,
+        detailOpen: state.viewingCampaign?.id === action.payload ? false : state.detailOpen,
+        viewingCampaign: state.viewingCampaign?.id === action.payload ? null : state.viewingCampaign,
       };
     }
-    case 'DRAG_UPDATE': {
-      const { id, startDate, endDate } = action.payload;
-      return {
-        ...state,
-        campaigns: state.campaigns.map((c) =>
-          c.id === id ? { ...c, startDate, endDate } : c
-        ),
-      };
+    case 'UPSERT_BRAND': {
+      const exists = state.brands.find((b) => b.id === action.payload.id);
+      const brands = exists
+        ? state.brands.map((b) => b.id === action.payload.id ? action.payload : b)
+        : [...state.brands, action.payload];
+      return { ...state, brands };
     }
-    case 'OPEN_DRAWER': {
-      return {
-        ...state,
-        drawerOpen: true,
-        selectedCampaign: action.payload || null,
-        isNewCampaign: !action.payload,
-        detailOpen: false,
-        viewingCampaign: null,
-      };
-    }
-    case 'CLOSE_DRAWER': {
-      return {
-        ...state,
-        drawerOpen: false,
-        selectedCampaign: null,
-        isNewCampaign: false,
-      };
-    }
-    case 'VIEW_CAMPAIGN': {
-      return {
-        ...state,
-        detailOpen: true,
-        viewingCampaign: action.payload,
-        drawerOpen: false,
-        selectedCampaign: null,
-      };
-    }
-    case 'CLOSE_DETAIL': {
-      return {
-        ...state,
-        detailOpen: false,
-        viewingCampaign: null,
-      };
-    }
-    case 'TOGGLE_MILESTONE': {
-      const { campaignId, milestoneId } = action.payload;
-      const updatedCampaigns = state.campaigns.map((c) => {
-        if (c.id !== campaignId) return c;
-        return {
-          ...c,
-          milestones: (c.milestones || []).map((m) =>
-            m.id === milestoneId ? { ...m, completed: !m.completed } : m
-          ),
-        };
-      });
-      const updatedViewing = state.viewingCampaign?.id === campaignId
-        ? updatedCampaigns.find((c) => c.id === campaignId)
-        : state.viewingCampaign;
-      return {
-        ...state,
-        campaigns: updatedCampaigns,
-        viewingCampaign: updatedViewing,
-      };
-    }
-
-    // ===== Brand Actions =====
-    case 'ADD_BRAND': {
-      const newBrand = {
-        ...action.payload,
-        id: 'brand-' + Date.now(),
-      };
-      return {
-        ...state,
-        brands: [...state.brands, newBrand],
-        brandDrawerOpen: false,
-        editingBrand: null,
-      };
-    }
-    case 'UPDATE_BRAND': {
-      return {
-        ...state,
-        brands: state.brands.map((b) =>
-          b.id === action.payload.id ? action.payload : b
-        ),
-        brandDrawerOpen: false,
-        editingBrand: null,
-      };
-    }
-    case 'DELETE_BRAND': {
+    case 'REMOVE_BRAND': {
       return {
         ...state,
         brands: state.brands.filter((b) => b.id !== action.payload),
@@ -180,64 +80,50 @@ function campaignReducer(state, action) {
         editingBrand: null,
       };
     }
-    case 'SET_ACTIVE_BRAND': {
+
+    // ===== UI Actions (unchanged) =====
+    case 'OPEN_DRAWER':
       return {
         ...state,
-        activeBrandId: state.activeBrandId === action.payload ? null : action.payload,
+        drawerOpen: true,
+        selectedCampaign: action.payload || null,
+        isNewCampaign: !action.payload,
+        detailOpen: false,
+        viewingCampaign: null,
       };
-    }
-    case 'OPEN_BRAND_DRAWER': {
-      return {
-        ...state,
-        brandDrawerOpen: true,
-        editingBrand: action.payload || null,
-      };
-    }
-    case 'CLOSE_BRAND_DRAWER': {
-      return {
-        ...state,
-        brandDrawerOpen: false,
-        editingBrand: null,
-      };
-    }
+    case 'CLOSE_DRAWER':
+      return { ...state, drawerOpen: false, selectedCampaign: null, isNewCampaign: false };
+    case 'VIEW_CAMPAIGN':
+      return { ...state, detailOpen: true, viewingCampaign: action.payload, drawerOpen: false, selectedCampaign: null };
+    case 'CLOSE_DETAIL':
+      return { ...state, detailOpen: false, viewingCampaign: null };
+    case 'SET_ACTIVE_BRAND':
+      return { ...state, activeBrandId: state.activeBrandId === action.payload ? null : action.payload };
+    case 'OPEN_BRAND_DRAWER':
+      return { ...state, brandDrawerOpen: true, editingBrand: action.payload || null };
+    case 'CLOSE_BRAND_DRAWER':
+      return { ...state, brandDrawerOpen: false, editingBrand: null };
 
     // ===== Filter Actions =====
     case 'SET_FILTER_CATEGORY': {
       const cats = state.filters.categories.includes(action.payload)
         ? state.filters.categories.filter((c) => c !== action.payload)
         : [...state.filters.categories, action.payload];
-      return {
-        ...state,
-        filters: { ...state.filters, categories: cats },
-      };
+      return { ...state, filters: { ...state.filters, categories: cats } };
     }
-    case 'SET_FILTER_STATUS': {
-      return {
-        ...state,
-        filters: {
-          ...state.filters,
-          status: state.filters.status === action.payload ? null : action.payload,
-        },
-      };
-    }
-    case 'SET_FILTER_SEARCH': {
-      return {
-        ...state,
-        filters: { ...state.filters, search: action.payload },
-      };
-    }
-    case 'CLEAR_FILTERS': {
-      return {
-        ...state,
-        filters: { categories: [], status: null, search: '' },
-      };
-    }
+    case 'SET_FILTER_STATUS':
+      return { ...state, filters: { ...state.filters, status: state.filters.status === action.payload ? null : action.payload } };
+    case 'SET_FILTER_SEARCH':
+      return { ...state, filters: { ...state.filters, search: action.payload } };
+    case 'CLEAR_FILTERS':
+      return { ...state, filters: { categories: [], status: null, search: '' } };
+
     default:
       return state;
   }
 }
 
-// Map action types to permission keys
+// Permission map
 const ACTION_PERMISSION_MAP = {
   ADD_CAMPAIGN: 'canCreate',
   UPDATE_CAMPAIGN: 'canEdit',
@@ -249,71 +135,279 @@ const ACTION_PERMISSION_MAP = {
   DELETE_BRAND: 'canManageBrands',
 };
 
+// Fetch a single campaign with milestones
+async function fetchCampaignWithMilestones(campaignId) {
+  const { data } = await supabase
+    .from('campaigns')
+    .select('*, milestones(*)')
+    .eq('id', campaignId)
+    .single();
+  return data ? mapCampaignFromDb(data) : null;
+}
+
 export function CampaignProvider({ children }) {
   const [state, rawDispatch] = useReducer(campaignReducer, initialState);
   const { currentUser, hasPermission } = useAuth();
   const { addLog } = useChangeLog();
 
-  // Guarded dispatch with permission checks and change logging
-  const dispatch = useCallback((action) => {
+  // ===== Load initial data =====
+  useEffect(() => {
+    if (!currentUser) return;
+
+    async function loadData() {
+      const [campaignsRes, brandsRes] = await Promise.all([
+        supabase.from('campaigns').select('*, milestones(*)').order('start_date'),
+        supabase.from('brands').select('*').order('created_at'),
+      ]);
+
+      rawDispatch({
+        type: 'SET_INITIAL_DATA',
+        payload: {
+          campaigns: (campaignsRes.data || []).map(mapCampaignFromDb),
+          brands: (brandsRes.data || []).map((b) => ({
+            id: b.id, name: b.name, logo: b.logo, color: b.color,
+            description: b.description, createdAt: b.created_at,
+          })),
+        },
+      });
+    }
+    loadData();
+  }, [currentUser]);
+
+  // ===== Real-time subscriptions =====
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const campaignChannel = supabase
+      .channel('campaigns-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'campaigns' }, async (payload) => {
+        if (payload.eventType === 'DELETE') {
+          rawDispatch({ type: 'REMOVE_CAMPAIGN', payload: payload.old.id });
+        } else {
+          const campaign = await fetchCampaignWithMilestones(payload.new.id);
+          if (campaign) rawDispatch({ type: 'UPSERT_CAMPAIGN', payload: campaign });
+        }
+      })
+      .subscribe();
+
+    const brandsChannel = supabase
+      .channel('brands-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'brands' }, (payload) => {
+        if (payload.eventType === 'DELETE') {
+          rawDispatch({ type: 'REMOVE_BRAND', payload: payload.old.id });
+        } else {
+          const b = payload.new;
+          rawDispatch({
+            type: 'UPSERT_BRAND',
+            payload: { id: b.id, name: b.name, logo: b.logo, color: b.color, description: b.description, createdAt: b.created_at },
+          });
+        }
+      })
+      .subscribe();
+
+    const milestonesChannel = supabase
+      .channel('milestones-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'milestones' }, async (payload) => {
+        const campaignId = payload.new?.campaign_id || payload.old?.campaign_id;
+        if (campaignId) {
+          const campaign = await fetchCampaignWithMilestones(campaignId);
+          if (campaign) rawDispatch({ type: 'UPSERT_CAMPAIGN', payload: campaign });
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(campaignChannel);
+      supabase.removeChannel(brandsChannel);
+      supabase.removeChannel(milestonesChannel);
+    };
+  }, [currentUser]);
+
+  // ===== Supabase CRUD operations =====
+  const supabaseCrud = useCallback(async (action) => {
+    switch (action.type) {
+      case 'ADD_CAMPAIGN': {
+        const { milestones = [], ...rest } = action.payload;
+        const dbCampaign = {
+          name: rest.name,
+          category: rest.category,
+          brand_id: rest.brandId || state.activeBrandId || (state.brands[0]?.id ?? null),
+          start_date: rest.startDate,
+          end_date: rest.endDate,
+          key_message: rest.keyMessage || '',
+          budget: rest.budget || '',
+          channels: rest.channels || [],
+          target_audience: rest.targetAudience || '',
+          notes: rest.notes || '',
+          details: rest.details || '',
+          media: rest.media || [],
+        };
+        const { data, error } = await supabase.from('campaigns').insert(dbCampaign).select().single();
+        if (error) { console.error('Add campaign error:', error); return; }
+
+        // Insert milestones
+        if (milestones.length > 0) {
+          const dbMilestones = milestones.map((m, idx) => ({
+            campaign_id: data.id,
+            text: m.text,
+            date: m.date,
+            completed: m.completed || false,
+            sort_order: idx,
+          }));
+          await supabase.from('milestones').insert(dbMilestones);
+        }
+
+        // Optimistic: fetch and add immediately
+        const created = await fetchCampaignWithMilestones(data.id);
+        if (created) rawDispatch({ type: 'UPSERT_CAMPAIGN', payload: created });
+        rawDispatch({ type: 'CLOSE_DRAWER' });
+        return;
+      }
+      case 'UPDATE_CAMPAIGN': {
+        const { milestones = [], id, createdAt, updatedAt, ...rest } = action.payload;
+        const dbCampaign = {
+          name: rest.name,
+          category: rest.category,
+          brand_id: rest.brandId || null,
+          start_date: rest.startDate,
+          end_date: rest.endDate,
+          key_message: rest.keyMessage || '',
+          budget: rest.budget || '',
+          channels: rest.channels || [],
+          target_audience: rest.targetAudience || '',
+          notes: rest.notes || '',
+          details: rest.details || '',
+          media: rest.media || [],
+        };
+        await supabase.from('campaigns').update(dbCampaign).eq('id', id);
+
+        // Sync milestones: delete old, insert new
+        await supabase.from('milestones').delete().eq('campaign_id', id);
+        if (milestones.length > 0) {
+          const dbMilestones = milestones.map((m, idx) => ({
+            campaign_id: id,
+            text: m.text,
+            date: m.date,
+            completed: m.completed || false,
+            sort_order: idx,
+          }));
+          await supabase.from('milestones').insert(dbMilestones);
+        }
+
+        // Fetch updated campaign
+        const updated = await fetchCampaignWithMilestones(id);
+        if (updated) rawDispatch({ type: 'UPSERT_CAMPAIGN', payload: updated });
+        rawDispatch({ type: 'CLOSE_DRAWER' });
+        return;
+      }
+      case 'DELETE_CAMPAIGN': {
+        rawDispatch({ type: 'REMOVE_CAMPAIGN', payload: action.payload });
+        await supabase.from('campaigns').delete().eq('id', action.payload);
+        rawDispatch({ type: 'CLOSE_DRAWER' });
+        rawDispatch({ type: 'CLOSE_DETAIL' });
+        return;
+      }
+      case 'DRAG_UPDATE': {
+        const { id, startDate, endDate } = action.payload;
+        // Optimistic update
+        rawDispatch({
+          type: 'UPSERT_CAMPAIGN',
+          payload: { ...state.campaigns.find((c) => c.id === id), startDate, endDate },
+        });
+        await supabase.from('campaigns').update({
+          start_date: startDate,
+          end_date: endDate,
+        }).eq('id', id);
+        return;
+      }
+      case 'TOGGLE_MILESTONE': {
+        const { campaignId, milestoneId } = action.payload;
+        const campaign = state.campaigns.find((c) => c.id === campaignId);
+        const milestone = campaign?.milestones?.find((m) => m.id === milestoneId);
+        if (milestone) {
+          await supabase.from('milestones').update({ completed: !milestone.completed }).eq('id', milestoneId);
+        }
+        return;
+      }
+      case 'ADD_BRAND': {
+        const { data, error } = await supabase.from('brands').insert({
+          name: action.payload.name,
+          logo: action.payload.logo,
+          color: action.payload.color,
+          description: action.payload.description || '',
+        }).select().single();
+        if (error) { console.error('Add brand error:', error); return; }
+        rawDispatch({ type: 'UPSERT_BRAND', payload: { id: data.id, name: data.name, logo: data.logo, color: data.color, description: data.description, createdAt: data.created_at } });
+        rawDispatch({ type: 'CLOSE_BRAND_DRAWER' });
+        return;
+      }
+      case 'UPDATE_BRAND': {
+        const { error } = await supabase.from('brands').update({
+          name: action.payload.name,
+          logo: action.payload.logo,
+          color: action.payload.color,
+          description: action.payload.description || '',
+        }).eq('id', action.payload.id);
+        if (error) { console.error('Update brand error:', error); return; }
+        rawDispatch({ type: 'UPSERT_BRAND', payload: action.payload });
+        rawDispatch({ type: 'CLOSE_BRAND_DRAWER' });
+        return;
+      }
+      case 'DELETE_BRAND': {
+        rawDispatch({ type: 'REMOVE_BRAND', payload: action.payload });
+        await supabase.from('brands').delete().eq('id', action.payload);
+        rawDispatch({ type: 'CLOSE_BRAND_DRAWER' });
+        return;
+      }
+      default:
+        return false; // Not a CRUD action
+    }
+  }, [state.campaigns, state.brands, state.activeBrandId]);
+
+  // Guarded dispatch
+  const dispatch = useCallback(async (action) => {
     const permKey = ACTION_PERMISSION_MAP[action.type];
 
-    // If this action requires a permission, check it
     if (permKey) {
-      if (!hasPermission(permKey)) {
-        return; // Silently block - UI should already hide these actions
-      }
+      if (!hasPermission(permKey)) return;
 
-      // Extract target name for logging
+      // Log the action
       let targetName = '';
       if (action.type === 'DELETE_CAMPAIGN') {
-        const campaign = state.campaigns.find((c) => c.id === action.payload);
-        targetName = campaign?.name || action.payload;
+        targetName = state.campaigns.find((c) => c.id === action.payload)?.name || '';
       } else if (action.type === 'DELETE_BRAND') {
-        const brand = state.brands.find((b) => b.id === action.payload);
-        targetName = brand?.name || action.payload;
+        targetName = state.brands.find((b) => b.id === action.payload)?.name || '';
       } else if (action.type === 'DRAG_UPDATE') {
-        const campaign = state.campaigns.find((c) => c.id === action.payload.id);
-        targetName = campaign?.name || action.payload.id;
+        targetName = state.campaigns.find((c) => c.id === action.payload.id)?.name || '';
       } else if (action.type === 'TOGGLE_MILESTONE') {
-        const campaign = state.campaigns.find((c) => c.id === action.payload.campaignId);
-        targetName = campaign?.name || '';
+        targetName = state.campaigns.find((c) => c.id === action.payload.campaignId)?.name || '';
       } else if (action.payload?.name) {
         targetName = action.payload.name;
       }
 
       addLog(currentUser, action.type, targetName);
+      try {
+        await supabaseCrud(action);
+      } catch (err) {
+        console.error('Supabase CRUD error:', err);
+      }
+      return;
     }
 
+    // UI-only actions go directly to reducer
     rawDispatch(action);
-  }, [currentUser, hasPermission, addLog, state.campaigns, state.brands]);
-
-  // Persist to localStorage on every change
-  useEffect(() => {
-    saveToStorage(STORAGE_KEY, state.campaigns);
-  }, [state.campaigns]);
-
-  useEffect(() => {
-    saveToStorage(BRANDS_STORAGE_KEY, state.brands);
-  }, [state.brands]);
+  }, [currentUser, hasPermission, addLog, supabaseCrud, state.campaigns, state.brands]);
 
   // Get filtered campaigns
   const getFilteredCampaigns = () => {
     let filtered = [...state.campaigns];
 
-    // Filter by active brand
     if (state.activeBrandId) {
       filtered = filtered.filter((c) => c.brandId === state.activeBrandId);
     }
-
-    // Filter by category
     if (state.filters.categories.length > 0) {
-      filtered = filtered.filter((c) =>
-        state.filters.categories.includes(c.category)
-      );
+      filtered = filtered.filter((c) => state.filters.categories.includes(c.category));
     }
-
-    // Filter by status
     if (state.filters.status) {
       const now = new Date();
       filtered = filtered.filter((c) => {
@@ -325,24 +419,17 @@ export function CampaignProvider({ children }) {
         return true;
       });
     }
-
-    // Filter by search
     if (state.filters.search) {
       const q = state.filters.search.toLowerCase();
       filtered = filtered.filter(
-        (c) =>
-          c.name.toLowerCase().includes(q) ||
-          (c.keyMessage && c.keyMessage.toLowerCase().includes(q))
+        (c) => c.name.toLowerCase().includes(q) || (c.keyMessage && c.keyMessage.toLowerCase().includes(q))
       );
     }
 
-    // Sort by start date (chronological)
     filtered.sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
-
     return filtered;
   };
 
-  // Get brand by id
   const getBrandById = (id) => state.brands.find((b) => b.id === id);
 
   return (

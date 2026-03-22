@@ -5,7 +5,7 @@ import { X, Trash2, Shield, UserPlus } from 'lucide-react';
 export default function UserManagement() {
   const { state, dispatch, users, currentUser, updateUser, updateUserPassword, deleteUser, register, hasPermission } = useAuth();
   const [addMode, setAddMode] = useState(false);
-  const [newUser, setNewUser] = useState({ username: '', password: '', displayName: '', role: 'viewer' });
+  const [newUser, setNewUser] = useState({ email: '', password: '', displayName: '', role: 'viewer' });
   const [editPwId, setEditPwId] = useState(null);
   const [newPw, setNewPw] = useState('');
 
@@ -14,10 +14,10 @@ export default function UserManagement() {
   const handleClose = () => dispatch({ type: 'CLOSE_USER_MODAL' });
 
   const handleAdd = async () => {
-    if (!newUser.username.trim() || !newUser.password.trim() || !newUser.displayName.trim()) return;
-    const ok = await register(newUser.username, newUser.password, newUser.displayName, newUser.role);
+    if (!newUser.email.trim() || !newUser.password.trim() || !newUser.displayName.trim()) return;
+    const ok = await register(newUser.email, newUser.password, newUser.displayName, newUser.role);
     if (ok) {
-      setNewUser({ username: '', password: '', displayName: '', role: 'viewer' });
+      setNewUser({ email: '', password: '', displayName: '', role: 'viewer' });
       setAddMode(false);
     }
   };
@@ -27,7 +27,7 @@ export default function UserManagement() {
   };
 
   const handleSavePw = async (userId) => {
-    if (newPw.length < 4) return;
+    if (newPw.length < 6) return;
     await updateUserPassword(userId, newPw);
     setEditPwId(null);
     setNewPw('');
@@ -44,7 +44,7 @@ export default function UserManagement() {
               <Shield size={18} style={{ color: 'var(--accent-primary)' }} />
               <h2>Quản Lý Người Dùng</h2>
             </div>
-            <button className="drawer-close" onClick={handleClose}><X size={18} /></button>
+            <button className="drawer-close" onClick={handleClose} aria-label="Đóng"><X size={18} /></button>
           </div>
 
           {/* Body */}
@@ -78,13 +78,15 @@ export default function UserManagement() {
 
                   {/* Actions */}
                   <div className="user-mgmt-actions">
-                    <button
-                      className="btn"
-                      onClick={() => { setEditPwId(editPwId === user.id ? null : user.id); setNewPw(''); }}
-                      style={{ fontSize: 'var(--font-xs)', padding: '4px 8px' }}
-                    >
-                      Đổi MK
-                    </button>
+                    {user.id === currentUser?.id && (
+                      <button
+                        className="btn"
+                        onClick={() => { setEditPwId(editPwId === user.id ? null : user.id); setNewPw(''); }}
+                        style={{ fontSize: 'var(--font-xs)', padding: '4px 8px' }}
+                      >
+                        Đổi MK
+                      </button>
+                    )}
                     {user.id !== currentUser?.id && (
                       <button
                         className="btn btn-danger"
@@ -102,7 +104,7 @@ export default function UserManagement() {
                       <input
                         className="form-input"
                         type="text"
-                        placeholder="Mật khẩu mới (tối thiểu 4 ký tự)"
+                        placeholder="Mật khẩu mới (tối thiểu 6 ký tự)"
                         value={newPw}
                         onChange={(e) => setNewPw(e.target.value)}
                         style={{ flex: 1, fontSize: 'var(--font-xs)' }}
@@ -120,8 +122,8 @@ export default function UserManagement() {
             {addMode ? (
               <div className="user-mgmt-add-form">
                 <input className="form-input" placeholder="Tên hiển thị" value={newUser.displayName} onChange={(e) => setNewUser((p) => ({ ...p, displayName: e.target.value }))} />
-                <input className="form-input" placeholder="Username" value={newUser.username} onChange={(e) => setNewUser((p) => ({ ...p, username: e.target.value }))} />
-                <input className="form-input" placeholder="Mật khẩu" type="text" value={newUser.password} onChange={(e) => setNewUser((p) => ({ ...p, password: e.target.value }))} />
+                <input className="form-input" placeholder="Email" type="email" value={newUser.email} onChange={(e) => setNewUser((p) => ({ ...p, email: e.target.value }))} />
+                <input className="form-input" placeholder="Mật khẩu (tối thiểu 6 ký tự)" type="text" value={newUser.password} onChange={(e) => setNewUser((p) => ({ ...p, password: e.target.value }))} />
                 <select className="form-select" value={newUser.role} onChange={(e) => setNewUser((p) => ({ ...p, role: e.target.value }))}>
                   {Object.entries(ROLES).map(([key, val]) => (
                     <option key={key} value={key}>{val.label}</option>

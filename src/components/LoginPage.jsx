@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { useAuth, ROLES } from '../context/AuthContext';
-import { LogIn, UserPlus, Eye, EyeOff } from 'lucide-react';
+import { LogIn, UserPlus, Eye, EyeOff, Zap } from 'lucide-react';
 
 export default function LoginPage() {
   const { login, register, state } = useAuth();
   const [tab, setTab] = useState('login'); // 'login' | 'register'
-  const [form, setForm] = useState({ username: '', password: '', displayName: '', role: 'viewer' });
+  const [form, setForm] = useState({ email: '', password: '', displayName: '', role: 'viewer' });
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -14,14 +14,14 @@ export default function LoginPage() {
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
-    await login(form.username, form.password);
+    await login(form.email, form.password);
     setLoading(false);
   };
 
   const handleRegister = async (e) => {
     e.preventDefault();
     setLoading(true);
-    const ok = await register(form.username, form.password, form.displayName, form.role);
+    const ok = await register(form.email, form.password, form.displayName, form.role);
     if (ok) {
       setTab('login');
       setForm((prev) => ({ ...prev, displayName: '', role: 'viewer' }));
@@ -34,7 +34,7 @@ export default function LoginPage() {
       <div className="login-card">
         {/* Logo */}
         <div className="login-logo">
-          <div className="logo-icon">⚡</div>
+          <div className="logo-icon"><Zap size={22} /></div>
           <div>
             <h1>CMP PRO</h1>
             <p>Campaign Manager</p>
@@ -60,13 +60,13 @@ export default function LoginPage() {
         {tab === 'login' && (
           <form onSubmit={handleLogin} className="login-form">
             <div className="form-group">
-              <label className="form-label">Tên đăng nhập</label>
+              <label className="form-label">Email</label>
               <input
                 className="form-input"
-                type="text"
-                value={form.username}
-                onChange={(e) => handleChange('username', e.target.value)}
-                placeholder="username"
+                type="email"
+                value={form.email}
+                onChange={(e) => handleChange('email', e.target.value)}
+                placeholder="admin@cmp.local"
                 autoFocus
               />
             </div>
@@ -80,7 +80,7 @@ export default function LoginPage() {
                   onChange={(e) => handleChange('password', e.target.value)}
                   placeholder="••••••"
                 />
-                <button type="button" className="password-toggle" onClick={() => setShowPw(!showPw)}>
+                <button type="button" className="password-toggle" onClick={() => setShowPw(!showPw)} aria-label={showPw ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}>
                   {showPw ? <EyeOff size={14} /> : <Eye size={14} />}
                 </button>
               </div>
@@ -89,7 +89,7 @@ export default function LoginPage() {
               {loading ? 'Đang xử lý...' : 'Đăng Nhập'}
             </button>
             <p className="login-hint">
-              Tài khoản mặc định: <strong>admin</strong> / <strong>admin123</strong>
+              Tài khoản mặc định: <strong>admin@cmp.local</strong> / <strong>admin123</strong>
             </p>
           </form>
         )}
@@ -109,13 +109,13 @@ export default function LoginPage() {
               />
             </div>
             <div className="form-group">
-              <label className="form-label">Tên đăng nhập</label>
+              <label className="form-label">Email</label>
               <input
                 className="form-input"
-                type="text"
-                value={form.username}
-                onChange={(e) => handleChange('username', e.target.value)}
-                placeholder="username"
+                type="email"
+                value={form.email}
+                onChange={(e) => handleChange('email', e.target.value)}
+                placeholder="user@email.com"
               />
             </div>
             <div className="form-group">
@@ -126,9 +126,9 @@ export default function LoginPage() {
                   type={showPw ? 'text' : 'password'}
                   value={form.password}
                   onChange={(e) => handleChange('password', e.target.value)}
-                  placeholder="Tối thiểu 4 ký tự"
+                  placeholder="Tối thiểu 6 ký tự"
                 />
-                <button type="button" className="password-toggle" onClick={() => setShowPw(!showPw)}>
+                <button type="button" className="password-toggle" onClick={() => setShowPw(!showPw)} aria-label={showPw ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}>
                   {showPw ? <EyeOff size={14} /> : <Eye size={14} />}
                 </button>
               </div>

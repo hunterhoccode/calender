@@ -1,11 +1,8 @@
-import { createContext, useContext, useReducer, useEffect } from 'react';
+import { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
+import { supabase } from '../lib/supabase';
 
 const AuthContext = createContext();
 
-const STORAGE_USERS = 'marketing-calendar-users';
-const STORAGE_SESSION = 'marketing-calendar-session';
-
-// Role permissions
 export const ROLES = {
   admin: { label: 'Admin', color: '#6366f1' },
   editor: { label: 'Editor', color: '#10b981' },
@@ -18,60 +15,12 @@ export const PERMISSIONS = {
   viewer: { canCreate: false, canEdit: false, canDelete: false, canManageUsers: false, canManageBrands: false },
 };
 
-// Simple hash for localStorage-only auth (not production security)
-async function hashPassword(password) {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password);
-  const hash = await crypto.subtle.digest('SHA-256', data);
-  return Array.from(new Uint8Array(hash)).map((b) => b.toString(16).padStart(2, '0')).join('');
-}
-
-// Seed admin user
-const SEED_ADMIN = {
-  id: 'user-admin',
-  username: 'admin',
-  displayName: 'Admin',
-  role: 'admin',
-  createdAt: new Date().toISOString(),
+const initialState = {
+  users: [],
+  currentUser: null,
+  userModalOpen: false,
+  error: null,
 };
-
-function loadUsers() {
-  try {
-    const raw = localStorage.getItem(STORAGE_USERS);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-}
-
-function loadSession() {
-  try {
-    const raw = localStorage.getItem(STORAGE_SESSION);
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-}
-
-function initState() {
-  let users = loadUsers();
-  const session = loadSession();
-
-  // Seed admin if no users exist
-  if (users.length === 0) {
-    users = [SEED_ADMIN];
-    // Password will be set on first save
-  }
-
-  const currentUser = session ? users.find((u) => u.id === session.userId) || null : null;
-
-  return {
-    users,
-    currentUser,
-    userModalOpen: false,
-    error: null,
-  };
-}
 
 function authReducer(state, action) {
   switch (action.type) {
@@ -94,103 +43,160 @@ function authReducer(state, action) {
   }
 }
 
+async function fetchProfile(userId) {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', userId)
+    .single();
+  if (error || !data) return null;
+  return {
+    id: data.id,
+    username: data.username,
+    displayName: data.display_name,
+    role: data.role,
+    createdAt: data.created_at,
+  };
+}
+
 export function AuthProvider({ children }) {
-  const [state, dispatch] = useReducer(authReducer, null, initState);
+  const [state, dispatch] = useReducer(authReducer, initialState);
 
-  // Persist users
-  useEffect(() => {
-    localStorage.setItem(STORAGE_USERS, JSON.stringify(state.users));
-  }, [state.users]);
-
-  // Persist session
-  useEffect(() => {
-    if (state.currentUser) {
-      localStorage.setItem(STORAGE_SESSION, JSON.stringify({ userId: state.currentUser.id, loginAt: new Date().toISOString() }));
-    } else {
-      localStorage.removeItem(STORAGE_SESSION);
+  // Load all users (for user management)
+  const loadUsers = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .order('created_at');
+    if (!error && data) {
+      dispatch({
+        type: 'SET_USERS',
+        payload: data.map((u) => ({
+          id: u.id,
+          username: u.username,
+          displayName: u.display_name,
+          role: u.role,
+          createdAt: u.created_at,
+        })),
+      });
     }
-  }, [state.currentUser]);
-
-  // Initialize seed admin password
-  useEffect(() => {
-    (async () => {
-      const users = loadUsers();
-      const seedAdmin = users.find((u) => u.id === 'user-admin');
-      if (seedAdmin && !seedAdmin.passwordHash) {
-        seedAdmin.passwordHash = await hashPassword('admin123');
-        localStorage.setItem(STORAGE_USERS, JSON.stringify(users));
-        dispatch({ type: 'SET_USERS', payload: users });
-      }
-    })();
   }, []);
 
-  const login = async (username, password) => {
+  useEffect(() => {
+    if (state.currentUser) loadUsers();
+  }, [state.currentUser, loadUsers]);
+
+  const login = async (email, password) => {
     dispatch({ type: 'CLEAR_ERROR' });
-    const pwHash = await hashPassword(password);
-    const user = state.users.find((u) => u.username === username && u.passwordHash === pwHash);
-    if (user) {
-      dispatch({ type: 'LOGIN_SUCCESS', payload: user });
-      return true;
+    try {
+      const resp = await fetch(`https://rvdpjrxaxvdbouwichru.supabase.co/auth/v1/token?grant_type=password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ2ZHBqcnhheHZkYm91d2ljaHJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxODk4NzAsImV4cCI6MjA4OTc2NTg3MH0.cJZCUQkPjeuDyILv7M14adE1WGLsE8TB-WJ4NFk7pVU',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await resp.json();
+
+      if (!resp.ok || !data.access_token) {
+        dispatch({ type: 'SET_ERROR', payload: 'Email hoặc mật khẩu không đúng' });
+        return false;
+      }
+
+      // Set session in supabase client
+      await supabase.auth.setSession({
+        access_token: data.access_token,
+        refresh_token: data.refresh_token,
+      });
+
+      // Fetch profile
+      const profile = await fetchProfile(data.user.id);
+      if (profile) {
+        dispatch({ type: 'LOGIN_SUCCESS', payload: profile });
+        return true;
+      }
+
+      dispatch({ type: 'SET_ERROR', payload: 'Không tìm thấy profile' });
+      return false;
+    } catch (e) {
+      console.error('Login error:', e);
+      dispatch({ type: 'SET_ERROR', payload: 'Lỗi kết nối, vui lòng thử lại' });
+      return false;
     }
-    dispatch({ type: 'SET_ERROR', payload: 'Tên đăng nhập hoặc mật khẩu không đúng' });
-    return false;
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try { await supabase.auth.signOut(); } catch {}
     dispatch({ type: 'LOGOUT' });
   };
 
-  const register = async (username, password, displayName, role = 'viewer') => {
+  const register = async (email, password, displayName, role = 'viewer') => {
     dispatch({ type: 'CLEAR_ERROR' });
 
-    if (!username.trim() || !password.trim() || !displayName.trim()) {
+    if (!email.trim() || !password.trim() || !displayName.trim()) {
       dispatch({ type: 'SET_ERROR', payload: 'Vui lòng điền đầy đủ thông tin' });
       return false;
     }
 
-    if (password.length < 4) {
-      dispatch({ type: 'SET_ERROR', payload: 'Mật khẩu tối thiểu 4 ký tự' });
+    if (password.length < 6) {
+      dispatch({ type: 'SET_ERROR', payload: 'Mật khẩu tối thiểu 6 ký tự' });
       return false;
     }
 
-    if (state.users.some((u) => u.username === username)) {
-      dispatch({ type: 'SET_ERROR', payload: 'Tên đăng nhập đã tồn tại' });
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          username: email.split('@')[0],
+          display_name: displayName,
+          role,
+        },
+      },
+    });
+
+    if (error) {
+      dispatch({ type: 'SET_ERROR', payload: error.message });
       return false;
     }
 
-    const pwHash = await hashPassword(password);
-    const newUser = {
-      id: 'user-' + Date.now(),
-      username,
-      displayName,
-      passwordHash: pwHash,
-      role,
-      createdAt: new Date().toISOString(),
-    };
+    if (data?.user) {
+      await supabase.from('profiles').update({
+        display_name: displayName,
+        role,
+      }).eq('id', data.user.id);
+    }
 
-    const updated = [...state.users, newUser];
-    dispatch({ type: 'SET_USERS', payload: updated });
+    await loadUsers();
     return true;
   };
 
-  const updateUser = (userId, updates) => {
-    const updated = state.users.map((u) => (u.id === userId ? { ...u, ...updates } : u));
-    dispatch({ type: 'SET_USERS', payload: updated });
-    // Update currentUser if editing self
-    if (state.currentUser?.id === userId) {
-      dispatch({ type: 'LOGIN_SUCCESS', payload: { ...state.currentUser, ...updates } });
+  const updateUser = async (userId, updates) => {
+    const dbUpdates = {};
+    if (updates.role) dbUpdates.role = updates.role;
+    if (updates.displayName) dbUpdates.display_name = updates.displayName;
+
+    const { error } = await supabase.from('profiles').update(dbUpdates).eq('id', userId);
+    if (!error) {
+      await loadUsers();
+      if (state.currentUser?.id === userId) {
+        const profile = await fetchProfile(userId);
+        if (profile) dispatch({ type: 'LOGIN_SUCCESS', payload: profile });
+      }
     }
   };
 
   const updateUserPassword = async (userId, newPassword) => {
-    const pwHash = await hashPassword(newPassword);
-    updateUser(userId, { passwordHash: pwHash });
+    if (userId === state.currentUser?.id) {
+      await supabase.auth.updateUser({ password: newPassword });
+    }
   };
 
-  const deleteUser = (userId) => {
-    if (userId === state.currentUser?.id) return; // Cannot delete self
-    const updated = state.users.filter((u) => u.id !== userId);
-    dispatch({ type: 'SET_USERS', payload: updated });
+  const deleteUser = async (userId) => {
+    if (userId === state.currentUser?.id) return;
+    await supabase.from('profiles').delete().eq('id', userId);
+    await loadUsers();
   };
 
   const hasPermission = (permKey) => {
@@ -205,6 +211,7 @@ export function AuthProvider({ children }) {
     currentUser: state.currentUser,
     users: state.users,
     isLoggedIn: !!state.currentUser,
+    loading: false,
     login,
     logout,
     register,

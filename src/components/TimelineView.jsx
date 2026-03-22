@@ -16,6 +16,9 @@ export default function TimelineView({ currentDate, timelineRef }) {
   const { dispatch, getFilteredCampaigns } = useCampaigns();
   const campaigns = getFilteredCampaigns();
   const days = getTimelineDays(currentDate, 35);
+  const scrollRef = useRef(null);
+
+  const cellWidth = 45;
 
   const getBarPosition = (campaign) => {
     const start = parseISO(campaign.startDate);
@@ -32,14 +35,12 @@ export default function TimelineView({ currentDate, timelineRef }) {
     if (leftDays < 0 || leftDays >= days.length) return null;
     if (barDays <= 0) return null;
 
-    const cellWidth = 45;
     const left = leftDays * cellWidth;
     const width = Math.max(barDays * cellWidth - 4, 20);
 
     return { left, width };
   };
 
-  // Use raw color values so html2canvas can render them correctly for export
   const colorMap = {
     red: { bg: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', border: '#ef4444' },
     blue: { bg: 'rgba(59, 130, 246, 0.15)', color: '#3b82f6', border: '#3b82f6' },
@@ -49,12 +50,40 @@ export default function TimelineView({ currentDate, timelineRef }) {
     green: { bg: 'rgba(16, 185, 129, 0.15)', color: '#10b981', border: '#10b981' },
   };
 
+  const gridWidth = days.length * cellWidth;
+
   return (
-    <div className="timeline-view" ref={timelineRef}>
-      {/* Header */}
-      <div className="timeline-header">
+    <div className="timeline-wrapper" ref={timelineRef}>
+      {/* Fixed left column */}
+      <div className="timeline-fixed-col">
         <div className="timeline-label-col">Campaign</div>
-        <div className="timeline-dates">
+        {campaigns.length === 0 ? (
+          <div className="empty-state" style={{ minHeight: '200px' }}>
+            <CalendarDays size={48} />
+            <h3>Chưa có chiến dịch</h3>
+          </div>
+        ) : (
+          campaigns.map((campaign) => {
+            const color = getCategoryColor(campaign.category);
+            const styles = colorMap[color] || colorMap.blue;
+            return (
+              <div
+                key={campaign.id}
+                className="timeline-row-label"
+                onClick={() => dispatch({ type: 'VIEW_CAMPAIGN', payload: campaign })}
+              >
+                <div className="campaign-dot" style={{ background: styles.border }} />
+                <div className="campaign-name">{campaign.name}</div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Scrollable right area */}
+      <div className="timeline-scroll-area" ref={scrollRef}>
+        {/* Date header */}
+        <div className="timeline-dates" style={{ width: gridWidth }}>
           {days.map((day, idx) => (
             <div
               key={idx}
@@ -65,69 +94,43 @@ export default function TimelineView({ currentDate, timelineRef }) {
             </div>
           ))}
         </div>
-      </div>
 
-      {/* Body */}
-      <div className="timeline-body">
-        {campaigns.length === 0 ? (
-          <div className="empty-state" style={{ minHeight: '200px' }}>
-            <CalendarDays size={48} />
-            <h3>Chưa có chiến dịch</h3>
-            <p>Thêm chiến dịch mới để bắt đầu quản lý timeline của bạn.</p>
-          </div>
-        ) : (
-          campaigns.map((campaign) => {
-            const color = getCategoryColor(campaign.category);
-            const pos = getBarPosition(campaign);
-            const styles = colorMap[color] || colorMap.blue;
+        {/* Rows */}
+        {campaigns.map((campaign) => {
+          const color = getCategoryColor(campaign.category);
+          const pos = getBarPosition(campaign);
+          const styles = colorMap[color] || colorMap.blue;
 
-            return (
-              <div key={campaign.id} className="timeline-row">
+          return (
+            <div key={campaign.id} className="timeline-row-grid" style={{ width: gridWidth }}>
+              {days.map((day, idx) => (
                 <div
-                  className="timeline-row-label"
-                  onClick={() =>
-                    dispatch({ type: 'VIEW_CAMPAIGN', payload: campaign })
-                  }
+                  key={idx}
+                  className={`timeline-cell ${isToday(day) ? 'today' : ''} ${isWeekend(day) ? 'weekend' : ''}`}
+                />
+              ))}
+              {pos && (
+                <div
+                  className="timeline-bar-wrapper"
+                  style={{ left: pos.left + 'px', width: pos.width + 'px' }}
                 >
                   <div
-                    className="campaign-dot"
-                    style={{ background: styles.border }}
-                  />
-                  <div className="campaign-name">{campaign.name}</div>
+                    className="timeline-bar"
+                    style={{
+                      width: '100%',
+                      background: styles.bg,
+                      color: styles.color,
+                      borderLeft: `3px solid ${styles.border}`,
+                    }}
+                    onClick={() => dispatch({ type: 'VIEW_CAMPAIGN', payload: campaign })}
+                  >
+                    {campaign.name}
+                  </div>
                 </div>
-                <div className="timeline-row-grid">
-                  {days.map((day, idx) => (
-                    <div
-                      key={idx}
-                      className={`timeline-cell ${isToday(day) ? 'today' : ''} ${isWeekend(day) ? 'weekend' : ''}`}
-                    />
-                  ))}
-                  {pos && (
-                    <div
-                      className="timeline-bar-wrapper"
-                      style={{ left: pos.left + 'px', width: pos.width + 'px' }}
-                    >
-                      <div
-                        className="timeline-bar"
-                        style={{
-                          width: '100%',
-                          background: styles.bg,
-                          color: styles.color,
-                          borderLeft: `3px solid ${styles.border}`,
-                        }}
-                        onClick={() =>
-                          dispatch({ type: 'VIEW_CAMPAIGN', payload: campaign })
-                        }
-                      >
-                        {campaign.name}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })
-        )}
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

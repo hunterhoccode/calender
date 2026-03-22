@@ -85,10 +85,13 @@ export default function CampaignDetailModal() {
       <div className="modal-overlay" onClick={handleClose} />
       <div className="modal-container">
         <div className="modal-content detail-modal">
-          {/* Header with color accent */}
-          <div className="detail-header" style={{ borderBottom: `3px solid ${color}` }}>
-            <div className="detail-header-top">
-              <div className="detail-header-left">
+          {/* Header */}
+          <div className="detail-header">
+            <div className="detail-topbar">
+              <div className="detail-header-badges">
+                <span className="detail-status-badge" style={{ background: st.bg, color: st.color }}>
+                  <st.Icon size={12} /> {st.label}
+                </span>
                 {brand && (
                   <span className="modal-brand-badge" style={{ background: brand.color + '20', color: brand.color }}>
                     {brand.logo} {brand.name}
@@ -97,25 +100,20 @@ export default function CampaignDetailModal() {
                 <span className="detail-category-badge" style={{ background: `${color}20`, color }}>
                   {categoryLabel}
                 </span>
-                <span className="detail-status-badge" style={{ background: st.bg, color: st.color }}>
-                  <st.Icon size={12} /> {st.label}
-                </span>
               </div>
               <div className="detail-header-actions">
                 {hasPermission('canCreate') && (
-                  <button className="btn" onClick={() => dispatch({ type: 'DUPLICATE_CAMPAIGN', payload: campaign })}>
-                    <Copy size={14} />
-                    Nhân bản
+                  <button className="detail-action-btn" onClick={() => dispatch({ type: 'DUPLICATE_CAMPAIGN', payload: campaign })} title="Nhân bản">
+                    <Copy size={15} />
                   </button>
                 )}
                 {hasPermission('canEdit') && (
-                  <button className="btn" onClick={handleEdit}>
-                    <Edit3 size={14} />
-                    Sửa
+                  <button className="detail-action-btn" onClick={handleEdit} title="Chỉnh sửa">
+                    <Edit3 size={15} />
                   </button>
                 )}
-                <button className="drawer-close" onClick={handleClose} aria-label="Đóng">
-                  <X size={18} />
+                <button className="detail-action-btn" onClick={handleClose} aria-label="Đóng" title="Đóng">
+                  <X size={15} />
                 </button>
               </div>
             </div>
@@ -146,7 +144,7 @@ export default function CampaignDetailModal() {
                     <MessageCircle size={14} />
                     Key Message
                   </div>
-                  <blockquote className="detail-quote" style={{ borderColor: color }}>
+                  <blockquote className="detail-quote">
                     "{campaign.keyMessage}"
                   </blockquote>
                 </div>

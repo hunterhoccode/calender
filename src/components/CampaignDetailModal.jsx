@@ -3,11 +3,12 @@ import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 import { useCampaigns } from '../context/CampaignContext';
 import { useAuth } from '../context/AuthContext';
+import CommentThread from './CommentThread';
 import { getCategoryColor, CATEGORIES } from '../utils/dateUtils';
 import {
   X, Edit3, Trash2, Calendar, MessageCircle, Target, DollarSign,
   Building2, CheckCircle2, Circle, AlertTriangle, Clock, ImageIcon,
-  Users, StickyNote, Milestone as MilestoneIcon, FileText, Zap,
+  Users, StickyNote, Milestone as MilestoneIcon, FileText, Zap, Copy,
 } from 'lucide-react';
 
 // Configure marked for safe rendering
@@ -101,6 +102,12 @@ export default function CampaignDetailModal() {
                 </span>
               </div>
               <div className="detail-header-actions">
+                {hasPermission('canCreate') && (
+                  <button className="btn" onClick={() => dispatch({ type: 'DUPLICATE_CAMPAIGN', payload: campaign })}>
+                    <Copy size={14} />
+                    Nhân bản
+                  </button>
+                )}
                 {hasPermission('canEdit') && (
                   <button className="btn" onClick={handleEdit}>
                     <Edit3 size={14} />
@@ -243,6 +250,11 @@ export default function CampaignDetailModal() {
                   <p className="detail-notes">{campaign.notes}</p>
                 </div>
               )}
+
+              {/* Comments */}
+              <div className="detail-section">
+                <CommentThread campaignId={campaign.id} />
+              </div>
             </div>
 
             {/* Right - Meta Info */}

@@ -128,6 +128,7 @@ const ACTION_PERMISSION_MAP = {
   ADD_CAMPAIGN: 'canCreate',
   UPDATE_CAMPAIGN: 'canEdit',
   DELETE_CAMPAIGN: 'canDelete',
+  DUPLICATE_CAMPAIGN: 'canCreate',
   DRAG_UPDATE: 'canEdit',
   TOGGLE_MILESTONE: 'canEdit',
   ADD_BRAND: 'canManageBrands',
@@ -305,6 +306,45 @@ export function CampaignProvider({ children }) {
         await supabase.from('campaigns').delete().eq('id', action.payload);
         rawDispatch({ type: 'CLOSE_DRAWER' });
         rawDispatch({ type: 'CLOSE_DETAIL' });
+        return;
+      }
+      case 'DUPLICATE_CAMPAIGN': {
+        const src = action.payload;
+        const dbCampaign = {
+          name: src.name + ' (Copy)',
+          category: src.category,
+          brand_id: src.brandId || null,
+          start_date: src.startDate,
+          end_date: src.endDate,
+          key_message: src.keyMessage || '',
+          budget: src.budget || '',
+          channels: src.channels || [],
+          target_audience: src.targetAudience || '',
+          notes: src.notes || '',
+          details: src.details || '',
+          media: src.media || [],
+        };
+        const { data, error } = await supabase.from('campaigns').insert(dbCampaign).select().single();
+        if (error) { console.error('Duplicate campaign error:', error); return; }
+
+        // Copy milestones
+        const srcMilestones = src.milestones || [];
+        if (srcMilestones.length > 0) {
+          const dbMilestones = srcMilestones.map((m, idx) => ({
+            campaign_id: data.id,
+            text: m.text,
+            date: m.date,
+            completed: false,
+            sort_order: idx,
+          }));
+          await supabase.from('milestones').insert(dbMilestones);
+        }
+
+        const created = await fetchCampaignWithMilestones(data.id);
+        if (created) rawDispatch({ type: 'UPSERT_CAMPAIGN', payload: created });
+        // Open drawer to edit the copy
+        rawDispatch({ type: 'CLOSE_DETAIL' });
+        rawDispatch({ type: 'OPEN_DRAWER', payload: created });
         return;
       }
       case 'DRAG_UPDATE': {

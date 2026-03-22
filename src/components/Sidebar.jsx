@@ -4,6 +4,7 @@ import { getStatusForCampaign, checkOverlaps } from '../utils/dateUtils';
 import UserBadge from './UserBadge';
 import {
   LayoutGrid,
+  LayoutDashboard,
   CalendarDays,
   GanttChart,
   Zap,
@@ -114,6 +115,13 @@ export default function Sidebar({ currentView, onViewChange, onOpenChangelog, is
         <div style={{ height: 12 }} />
 
         <div className="sidebar-section-title">Chế độ xem</div>
+        <button
+          className={`sidebar-nav-item ${currentView === 'dashboard' ? 'active' : ''}`}
+          onClick={() => onViewChange('dashboard')}
+        >
+          <LayoutDashboard size={18} />
+          Dashboard
+        </button>
         <button
           className={`sidebar-nav-item ${currentView === 'month' ? 'active' : ''}`}
           onClick={() => onViewChange('month')}

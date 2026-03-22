@@ -7,6 +7,7 @@ import Sidebar from './components/Sidebar';
 import MonthView from './components/MonthView';
 import WeekView from './components/WeekView';
 import TimelineView from './components/TimelineView';
+import DashboardView from './components/DashboardView';
 import CampaignDrawer from './components/CampaignDrawer';
 import CampaignDetailModal from './components/CampaignDetailModal';
 import BrandDrawer from './components/BrandDrawer';
@@ -69,6 +70,7 @@ function AppContent() {
   };
 
   const viewLabels = {
+    dashboard: 'Dashboard',
     month: 'Tháng',
     week: 'Tuần',
     timeline: 'Timeline',
@@ -144,6 +146,7 @@ function AppContent() {
 
         {/* Calendar View */}
         <div className="calendar-container">
+          {currentView === 'dashboard' && <DashboardView />}
           {currentView === 'month' && <MonthView currentDate={currentDate} monthRef={monthRef} />}
           {currentView === 'week' && <WeekView currentDate={currentDate} weekRef={weekRef} />}
           {currentView === 'timeline' && (

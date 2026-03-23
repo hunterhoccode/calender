@@ -20,14 +20,17 @@ const initialState = {
   currentUser: null,
   userModalOpen: false,
   error: null,
+  restoring: true,
 };
 
 function authReducer(state, action) {
   switch (action.type) {
     case 'LOGIN_SUCCESS':
-      return { ...state, currentUser: action.payload, error: null };
+      return { ...state, currentUser: action.payload, error: null, restoring: false };
     case 'LOGOUT':
-      return { ...state, currentUser: null, error: null };
+      return { ...state, currentUser: null, error: null, restoring: false };
+    case 'RESTORE_DONE':
+      return { ...state, restoring: false };
     case 'SET_ERROR':
       return { ...state, error: action.payload };
     case 'CLEAR_ERROR':
@@ -61,6 +64,27 @@ async function fetchProfile(userId) {
 
 export function AuthProvider({ children }) {
   const [state, dispatch] = useReducer(authReducer, initialState);
+
+  // Restore session on page load
+  useEffect(() => {
+    let mounted = true;
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!mounted) return;
+      if (session?.user) {
+        const profile = await fetchProfile(session.user.id);
+        if (mounted && profile) {
+          dispatch({ type: 'LOGIN_SUCCESS', payload: profile });
+          return;
+        }
+      }
+      if (mounted) dispatch({ type: 'RESTORE_DONE' });
+    }).catch(() => {
+      if (mounted) dispatch({ type: 'RESTORE_DONE' });
+    });
+    // Timeout fallback
+    const t = setTimeout(() => { if (mounted) dispatch({ type: 'RESTORE_DONE' }); }, 3000);
+    return () => { mounted = false; clearTimeout(t); };
+  }, []);
 
   // Load all users (for user management)
   const loadUsers = useCallback(async () => {
@@ -211,7 +235,7 @@ export function AuthProvider({ children }) {
     currentUser: state.currentUser,
     users: state.users,
     isLoggedIn: !!state.currentUser,
-    loading: false,
+    loading: state.restoring,
     login,
     logout,
     register,

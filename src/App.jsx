@@ -1,7 +1,8 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ChangeLogProvider } from './context/ChangeLogContext';
 import { CampaignProvider } from './context/CampaignContext';
+import { ThemeProvider } from './context/ThemeContext';
 import LoginPage from './components/LoginPage';
 import Sidebar from './components/Sidebar';
 import MonthView from './components/MonthView';
@@ -28,6 +29,7 @@ import {
   ChevronRight,
   CalendarDays,
   Menu,
+  Zap,
 } from 'lucide-react';
 import './index.css';
 
@@ -165,31 +167,46 @@ function AppContent() {
   );
 }
 
+function SplashScreen() {
+  return (
+    <div className="splash-screen">
+      <div className="splash-content">
+        <div className="splash-logo">
+          <Zap size={28} />
+        </div>
+        <h1 className="splash-title">CMP PRO</h1>
+        <p className="splash-subtitle">Campaign Manager</p>
+        <div className="splash-bar"><div className="splash-bar-fill" /></div>
+      </div>
+    </div>
+  );
+}
+
 function AuthGate() {
   const { isLoggedIn, loading } = useAuth();
+  const [splashDone, setSplashDone] = useState(false);
 
-  if (loading) {
-    return (
-      <div className="login-page">
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
-          <div className="spinner" />
-          <p style={{ color: 'var(--text-secondary)', fontSize: 'var(--font-sm)' }}>Đang tải...</p>
-        </div>
-      </div>
-    );
-  }
+  useEffect(() => {
+    // Splash hiện tối thiểu 1s, chỉ chạy 1 lần khi mount
+    const t = setTimeout(() => setSplashDone(true), 1000);
+    return () => clearTimeout(t);
+  }, []);
 
+  // Hiện splash khi đang restore HOẶC chưa hết thời gian splash
+  if (loading || !splashDone) return <SplashScreen />;
   return isLoggedIn ? <AppContent /> : <LoginPage />;
 }
 
 export default function App() {
   return (
-    <AuthProvider>
-      <ChangeLogProvider>
-        <CampaignProvider>
-          <AuthGate />
-        </CampaignProvider>
-      </ChangeLogProvider>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <ChangeLogProvider>
+          <CampaignProvider>
+            <AuthGate />
+          </CampaignProvider>
+        </ChangeLogProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

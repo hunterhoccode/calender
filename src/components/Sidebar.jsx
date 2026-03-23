@@ -1,5 +1,6 @@
 import { useCampaigns } from '../context/CampaignContext';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { getStatusForCampaign, checkOverlaps } from '../utils/dateUtils';
 import UserBadge from './UserBadge';
 import {
@@ -18,9 +19,12 @@ import {
   MoreHorizontal,
   Shield,
   History,
+  Sun,
+  Moon,
 } from 'lucide-react';
 
 export default function Sidebar({ currentView, onViewChange, onOpenChangelog, isOpen }) {
+  const { theme, toggleTheme } = useTheme();
   const { state, dispatch, getFilteredCampaigns } = useCampaigns();
   const { hasPermission, dispatch: authDispatch } = useAuth();
   const { campaigns, brands, activeBrandId } = state;
@@ -173,7 +177,6 @@ export default function Sidebar({ currentView, onViewChange, onOpenChangelog, is
           <History size={18} />
           Lịch Sử Thay Đổi
         </button>
-
         <div style={{ flex: 1 }} />
 
         {/* Overlap Warning */}
@@ -229,7 +232,17 @@ export default function Sidebar({ currentView, onViewChange, onOpenChangelog, is
         </div>
       </div>
 
-      {/* User */}
+      {/* Theme toggle + User */}
+      <div style={{ padding: 'var(--space-xs) var(--space-md)', borderTop: '1px solid var(--border-color)' }}>
+        <button
+          className="sidebar-nav-item"
+          onClick={toggleTheme}
+          style={{ width: '100%' }}
+        >
+          {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+          {theme === 'dark' ? 'Chế độ sáng' : 'Chế độ tối'}
+        </button>
+      </div>
       <UserBadge />
     </aside>
   );

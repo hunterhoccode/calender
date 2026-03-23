@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth, ROLES } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 import { LogOut, Settings, X, Save } from 'lucide-react';
@@ -84,8 +85,8 @@ export default function UserBadge() {
         </button>
       </div>
 
-      {/* Edit Profile Modal */}
-      {editOpen && (
+      {/* Edit Profile Modal - Portal to body */}
+      {editOpen && createPortal(
         <>
           <div className="modal-overlay" onClick={() => setEditOpen(false)} />
           <div className="modal-container">
@@ -162,7 +163,8 @@ export default function UserBadge() {
               </div>
             </div>
           </div>
-        </>
+        </>,
+        document.body
       )}
     </>
   );

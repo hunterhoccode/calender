@@ -168,32 +168,49 @@ export function AuthProvider({ children }) {
       return false;
     }
 
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          username: email.split('@')[0],
-          display_name: displayName,
-          role,
+    try {
+      const resp = await fetch('https://rvdpjrxaxvdbouwichru.supabase.co/auth/v1/signup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ2ZHBqcnhheHZkYm91d2ljaHJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxODk4NzAsImV4cCI6MjA4OTc2NTg3MH0.cJZCUQkPjeuDyILv7M14adE1WGLsE8TB-WJ4NFk7pVU',
         },
-      },
-    });
+        body: JSON.stringify({
+          email,
+          password,
+          data: {
+            username: email.split('@')[0],
+            display_name: displayName,
+            role,
+          },
+        }),
+      });
+      const result = await resp.json();
 
-    if (error) {
-      dispatch({ type: 'SET_ERROR', payload: error.message });
+      if (!resp.ok) {
+        dispatch({ type: 'SET_ERROR', payload: result.error?.message || result.msg || 'Lỗi tạo tài khoản' });
+        return false;
+      }
+
+      const userId = result.id || result.user?.id;
+      if (userId) {
+        // Create profile via RPC (bypasses RLS)
+        const username = email.split('@')[0] + '-' + userId.substring(0, 8);
+        await supabase.rpc('create_profile', {
+          user_id: userId,
+          user_username: username,
+          user_display_name: displayName,
+          user_role: role,
+        });
+      }
+
+      await loadUsers();
+      return true;
+    } catch (e) {
+      console.error('Register error:', e);
+      dispatch({ type: 'SET_ERROR', payload: 'Lỗi kết nối, vui lòng thử lại' });
       return false;
     }
-
-    if (data?.user) {
-      await supabase.from('profiles').update({
-        display_name: displayName,
-        role,
-      }).eq('id', data.user.id);
-    }
-
-    await loadUsers();
-    return true;
   };
 
   const updateUser = async (userId, updates) => {

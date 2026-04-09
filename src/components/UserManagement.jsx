@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useAuth, ROLES } from '../context/AuthContext';
+import { useAuth, ROLES } from '../contexts/AuthContext';
 import { X, Trash2, Shield, UserPlus } from 'lucide-react';
 
 export default function UserManagement() {

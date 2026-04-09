@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useAuth, ROLES } from '../context/AuthContext';
+import { useAuth, ROLES } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { LogOut, Settings, X, Save } from 'lucide-react';
 

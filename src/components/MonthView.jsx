@@ -1,4 +1,4 @@
-import { useCampaigns } from '../context/CampaignContext';
+import { useCampaigns } from '../contexts/CampaignContext';
 import {
   getCalendarDays,
   isSameMonth,
@@ -13,7 +13,7 @@ import {
   formatDate,
 } from '../utils/dateUtils';
 import { useState, useCallback } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function MonthView({ currentDate, monthRef }) {
   const { state, dispatch, getFilteredCampaigns, getBrandById } = useCampaigns();

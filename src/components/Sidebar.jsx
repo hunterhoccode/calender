@@ -1,6 +1,6 @@
-import { useCampaigns } from '../context/CampaignContext';
-import { useAuth } from '../context/AuthContext';
-import { useTheme } from '../context/ThemeContext';
+import { useCampaigns } from '../contexts/CampaignContext';
+import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { getStatusForCampaign, checkOverlaps } from '../utils/dateUtils';
 import UserBadge from './UserBadge';
 import {

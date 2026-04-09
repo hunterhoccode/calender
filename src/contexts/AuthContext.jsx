@@ -113,11 +113,11 @@ export function AuthProvider({ children }) {
   const login = async (email, password) => {
     dispatch({ type: 'CLEAR_ERROR' });
     try {
-      const resp = await fetch(`https://rvdpjrxaxvdbouwichru.supabase.co/auth/v1/token?grant_type=password`, {
+      const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/auth/v1/token?grant_type=password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ2ZHBqcnhheHZkYm91d2ljaHJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxODk4NzAsImV4cCI6MjA4OTc2NTg3MH0.cJZCUQkPjeuDyILv7M14adE1WGLsE8TB-WJ4NFk7pVU',
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
         },
         body: JSON.stringify({ email, password }),
       });
@@ -169,11 +169,11 @@ export function AuthProvider({ children }) {
     }
 
     try {
-      const resp = await fetch('https://rvdpjrxaxvdbouwichru.supabase.co/auth/v1/signup', {
+      const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/auth/v1/signup`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ2ZHBqcnhheHZkYm91d2ljaHJ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxODk4NzAsImV4cCI6MjA4OTc2NTg3MH0.cJZCUQkPjeuDyILv7M14adE1WGLsE8TB-WJ4NFk7pVU',
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
         },
         body: JSON.stringify({
           email,

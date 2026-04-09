@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
-import { useCampaigns } from '../context/CampaignContext';
-import { useAuth } from '../context/AuthContext';
+import { useCampaigns } from '../contexts/CampaignContext';
+import { useAuth } from '../contexts/AuthContext';
 import CommentThread from './CommentThread';
 import { getCategoryColor, CATEGORIES } from '../utils/dateUtils';
 import {

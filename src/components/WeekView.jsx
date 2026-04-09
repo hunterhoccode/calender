@@ -1,4 +1,4 @@
-import { useCampaigns } from '../context/CampaignContext';
+import { useCampaigns } from '../contexts/CampaignContext';
 import {
   getWeekDays,
   isToday,
@@ -12,7 +12,7 @@ import {
   formatDate,
 } from '../utils/dateUtils';
 import { useState, useCallback } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function WeekView({ currentDate, weekRef }) {
   const { dispatch, getFilteredCampaigns } = useCampaigns();

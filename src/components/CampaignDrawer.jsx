@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useCampaigns } from '../context/CampaignContext';
-import { useAuth } from '../context/AuthContext';
+import { useCampaigns } from '../contexts/CampaignContext';
+import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { CATEGORIES, CHANNELS, getCategoryColor } from '../utils/dateUtils';
 import DatePicker from './DatePicker';

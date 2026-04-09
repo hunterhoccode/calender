@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
-import { useAuth, ROLES } from '../context/AuthContext';
+import { useAuth, ROLES } from '../contexts/AuthContext';
 import { Send, Trash2, MessageCircle } from 'lucide-react';
 
 export default function CommentThread({ campaignId }) {

@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
-import { AuthProvider, useAuth } from './context/AuthContext';
-import { ChangeLogProvider } from './context/ChangeLogContext';
-import { CampaignProvider } from './context/CampaignContext';
-import { ThemeProvider } from './context/ThemeContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { ChangeLogProvider } from './contexts/ChangeLogContext';
+import { CampaignProvider } from './contexts/CampaignContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import LoginPage from './components/LoginPage';
 import Sidebar from './components/Sidebar';
 import MonthView from './components/MonthView';

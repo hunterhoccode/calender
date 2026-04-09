@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useCampaigns } from '../context/CampaignContext';
+import { useCampaigns } from '../contexts/CampaignContext';
 import { X, Trash2, Palette, Edit3, Building2, AlertTriangle } from 'lucide-react';
 
 const BRAND_COLORS = [

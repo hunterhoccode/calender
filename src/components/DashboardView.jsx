@@ -1,4 +1,4 @@
-import { useCampaigns } from '../context/CampaignContext';
+import { useCampaigns } from '../contexts/CampaignContext';
 import {
   getStatusForCampaign,
   checkOverlaps,

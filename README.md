@@ -1,16 +1,55 @@
-# React + Vite
+# CMP PRO — Marketing Calendar
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Ứng dụng quản lý lịch marketing tập trung cho team, hỗ trợ nhiều brand, nhiều view, cộng tác real-time.
 
-Currently, two official plugins are available:
+## Tech Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **Frontend:** React 19, Vite 8, CSS thuần (không dùng Tailwind/UI lib)
+- **Backend:** Supabase (Auth, PostgreSQL, Realtime, Storage)
+- **Thư viện:** date-fns, lucide-react, marked, dompurify, html2canvas
 
-## React Compiler
+## Quick Start
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```bash
+cp .env.example .env   # điền VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY
+npm install
+npm run dev            # localhost:5173
+npm run build
+npm run preview
+```
 
-## Expanding the ESLint configuration
+Xem [deployment-guide.md](docs/deployment-guide.md) để setup Supabase schema và biến môi trường.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Tính năng chính
+
+| Tính năng | Mô tả |
+|-----------|-------|
+| 4 Views | Dashboard, Month, Week, Timeline (Gantt) |
+| Campaign CRUD | Tạo/sửa/xóa/nhân bản campaign |
+| Brand Management | Quản lý thương hiệu (Admin only) |
+| Milestones | Mốc tiến độ trong campaign |
+| Real-time | Sync tức thì qua Supabase Realtime |
+| Role-based | Admin / Editor / Viewer |
+| Export PNG | Xuất ảnh cả 3 view lịch |
+| Change Log | Audit trail toàn bộ thao tác |
+| Dark/Light Mode | Theo system preference |
+
+## Roles & Permissions
+
+| Action | Admin | Editor | Viewer |
+|--------|-------|--------|--------|
+| Xem | ✅ | ✅ | ✅ |
+| Tạo campaign | ✅ | ✅ | ❌ |
+| Sửa campaign | ✅ | ✅ | ❌ |
+| Xóa campaign | ✅ | ❌ | ❌ |
+| Quản lý brand | ✅ | ❌ | ❌ |
+| Quản lý user | ✅ | ❌ | ❌ |
+
+## Docs
+
+- [Project Overview & PDR](docs/project-overview-pdr.md)
+- [System Architecture](docs/system-architecture.md)
+- [Codebase Summary](docs/codebase-summary.md)
+- [Code Standards](docs/code-standards.md)
+- [Deployment Guide](docs/deployment-guide.md)
+- [Project Roadmap](docs/project-roadmap.md)

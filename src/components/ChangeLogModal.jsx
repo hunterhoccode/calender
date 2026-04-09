@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useChangeLog } from '../context/ChangeLogContext';
-import { useAuth } from '../context/AuthContext';
+import { useChangeLog } from '../contexts/ChangeLogContext';
+import { useAuth } from '../contexts/AuthContext';
 import { X, History, Trash2, Filter } from 'lucide-react';
 
 const ACTION_ICONS = {

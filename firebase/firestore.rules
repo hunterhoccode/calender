@@ -20,8 +20,8 @@ service cloud.firestore {
 
     // Users
     match /users/{userId} {
-      // Only self or admin can read a user document
-      allow read: if isAuth() && (request.auth.uid == userId || isAdmin());
+      // Internal tool: all authenticated users can read user profiles (e.g. for comments, user list)
+      allow read: if isAuth();
       // Self-registration: must create own document, role must be 'viewer'
       allow create: if isAuth()
         && request.auth.uid == userId

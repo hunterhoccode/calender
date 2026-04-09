@@ -1,0 +1,56 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    function userRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function isAdmin() {
+      return isAuth() && userRole() == 'admin';
+    }
+
+    function isEditor() {
+      return isAuth() && userRole() in ['admin', 'editor'];
+    }
+
+    // Users
+    match /users/{userId} {
+      allow read: if isAuth();
+      allow create: if isAuth();
+      allow update: if isAuth() && (request.auth.uid == userId || isAdmin());
+      allow delete: if isAdmin() && request.auth.uid != userId;
+    }
+
+    // Brands
+    match /brands/{brandId} {
+      allow read: if isAuth();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Campaigns + subcollections
+    match /campaigns/{campaignId} {
+      allow read: if isAuth();
+      allow create, update: if isEditor();
+      allow delete: if isAdmin();
+
+      match /comments/{commentId} {
+        allow read: if isAuth();
+        allow create: if isAuth();
+        allow delete: if isAuth() &&
+          (request.auth.uid == resource.data.userId || isAdmin());
+      }
+    }
+
+    // Changelog
+    match /changelog/{logId} {
+      allow read: if isAuth();
+      allow create: if isEditor();
+      allow delete: if isAdmin();
+    }
+  }
+}

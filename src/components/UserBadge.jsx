@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth, ROLES } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
+import { updateDoc, doc } from 'firebase/firestore';
+import { updatePassword } from 'firebase/auth';
+import { auth, db } from '../lib/firebase';
 import { LogOut, Settings, X, Save } from 'lucide-react';
 
 export default function UserBadge() {
@@ -30,35 +32,27 @@ export default function UserBadge() {
   const handleSave = async () => {
     setSaving(true);
     setMessage('');
-
     try {
-      // Update display name
       if (form.displayName.trim() && form.displayName !== currentUser.displayName) {
-        const { error } = await supabase.from('profiles').update({
-          display_name: form.displayName.trim(),
-        }).eq('id', currentUser.id);
-        if (error) { setMessage('Lỗi cập nhật tên: ' + error.message); setSaving(false); return; }
+        await updateDoc(doc(db, 'users', currentUser.id), {
+          displayName: form.displayName.trim(),
+        });
       }
-
-      // Update password
       if (form.newPassword.trim()) {
         if (form.newPassword.length < 6) {
           setMessage('Mật khẩu tối thiểu 6 ký tự');
           setSaving(false);
           return;
         }
-        const { error } = await supabase.auth.updateUser({ password: form.newPassword });
-        if (error) { setMessage('Lỗi đổi mật khẩu: ' + error.message); setSaving(false); return; }
+        if (!auth.currentUser) throw new Error('No auth session');
+        await updatePassword(auth.currentUser, form.newPassword);
       }
-
-      // Update local state
       if (form.displayName.trim() && form.displayName !== currentUser.displayName) {
         dispatch({
           type: 'LOGIN_SUCCESS',
           payload: { ...currentUser, displayName: form.displayName.trim() },
         });
       }
-
       setMessage('Cập nhật thành công!');
       setTimeout(() => setEditOpen(false), 1000);
     } catch (e) {

@@ -1,88 +1,62 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { supabase } from '../lib/supabase';
+import {
+  collection, query, orderBy, limit, onSnapshot,
+  addDoc, getDocs, writeBatch, serverTimestamp,
+} from 'firebase/firestore';
+import { db } from '../lib/firebase';
 
 const ChangeLogContext = createContext();
 
 const ACTION_LABELS = {
-  ADD_CAMPAIGN: 'Tạo chiến dịch',
-  UPDATE_CAMPAIGN: 'Cập nhật chiến dịch',
-  DELETE_CAMPAIGN: 'Xóa chiến dịch',
-  DRAG_UPDATE: 'Đổi ngày chiến dịch',
-  TOGGLE_MILESTONE: 'Cập nhật milestone',
-  ADD_BRAND: 'Tạo thương hiệu',
-  UPDATE_BRAND: 'Cập nhật thương hiệu',
-  DELETE_BRAND: 'Xóa thương hiệu',
+  ADD_CAMPAIGN:      'Tạo chiến dịch',
+  UPDATE_CAMPAIGN:   'Cập nhật chiến dịch',
+  DELETE_CAMPAIGN:   'Xóa chiến dịch',
+  DRAG_UPDATE:       'Đổi ngày chiến dịch',
+  TOGGLE_MILESTONE:  'Cập nhật milestone',
+  ADD_BRAND:         'Tạo thương hiệu',
+  UPDATE_BRAND:      'Cập nhật thương hiệu',
+  DELETE_BRAND:      'Xóa thương hiệu',
 };
 
 export function ChangeLogProvider({ children }) {
   const [logs, setLogs] = useState([]);
 
-  // Load logs from Supabase
   useEffect(() => {
-    async function loadLogs() {
-      const { data } = await supabase
-        .from('changelog')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(500);
-      if (data) {
-        setLogs(data.map((row) => ({
-          id: row.id,
-          userId: row.user_id,
-          username: row.username,
-          userRole: row.user_role,
-          action: row.action,
-          actionLabel: row.action_label,
-          targetName: row.target_name,
-          details: row.details,
-          timestamp: row.created_at,
-        })));
-      }
-    }
-    loadLogs();
-
-    // Real-time subscription
-    const channel = supabase
-      .channel('changelog-changes')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'changelog' }, (payload) => {
-        const row = payload.new;
-        const entry = {
-          id: row.id,
-          userId: row.user_id,
-          username: row.username,
-          userRole: row.user_role,
-          action: row.action,
-          actionLabel: row.action_label,
-          targetName: row.target_name,
-          details: row.details,
-          timestamp: row.created_at,
-        };
-        setLogs((prev) => {
-          if (prev.some((l) => l.id === entry.id)) return prev;
-          return [entry, ...prev].slice(0, 500);
-        });
-      })
-      .subscribe();
-
-    return () => supabase.removeChannel(channel);
+    const q = query(collection(db, 'changelog'), orderBy('createdAt', 'desc'), limit(500));
+    const unsub = onSnapshot(q, (snap) => {
+      setLogs(snap.docs.map((d) => ({
+        id:          d.id,
+        userId:      d.data().userId,
+        username:    d.data().username,
+        userRole:    d.data().userRole,
+        action:      d.data().action,
+        actionLabel: d.data().actionLabel,
+        targetName:  d.data().targetName,
+        details:     d.data().details,
+        timestamp:   d.data().createdAt?.toDate?.()?.toISOString() || null,
+      })));
+    });
+    return unsub;
   }, []);
 
   const addLog = useCallback(async (user, action, targetName, details = null) => {
-    const entry = {
-      user_id: user?.id || null,
-      username: user?.displayName || user?.username || 'Unknown',
-      user_role: user?.role || 'viewer',
+    await addDoc(collection(db, 'changelog'), {
+      userId:      user?.id    || null,
+      username:    user?.displayName || user?.username || 'Unknown',
+      userRole:    user?.role  || 'viewer',
       action,
-      action_label: ACTION_LABELS[action] || action,
-      target_name: targetName || '',
-      details,
-    };
-
-    await supabase.from('changelog').insert(entry);
+      actionLabel: ACTION_LABELS[action] || action,
+      targetName:  targetName || '',
+      details:     details || null,
+      createdAt:   serverTimestamp(),
+    });
   }, []);
 
   const clearLogs = useCallback(async () => {
-    await supabase.from('changelog').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    const snap = await getDocs(collection(db, 'changelog'));
+    const batch = writeBatch(db);
+    snap.docs.forEach((d) => batch.delete(d.ref));
+    await batch.commit();
     setLogs([]);
   }, []);
 

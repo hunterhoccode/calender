@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useCampaigns } from '../contexts/CampaignContext';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { storage } from '../lib/firebase';
 import { CATEGORIES, CHANNELS, getCategoryColor } from '../utils/dateUtils';
 import DatePicker from './DatePicker';
 import { X, Plus, Trash2, Calendar, MessageCircle, Target, DollarSign, Milestone, Building2, ImagePlus, XCircle, FileText, Bold, Italic, List, ListOrdered, Heading2, Heading3, Quote, Minus, Link, AlertTriangle } from 'lucide-react';
@@ -125,7 +126,7 @@ export default function CampaignDrawer() {
     }));
   };
 
-  // Media handlers - upload to Supabase Storage
+  // Media handlers - upload to Firebase Storage
   const handleMediaUpload = async (e) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
@@ -134,29 +135,27 @@ export default function CampaignDrawer() {
       if (!file.type.startsWith('image/')) continue;
       const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
       const filePath = `campaigns/${Date.now()}-${safeName}`;
-      const { error } = await supabase.storage
-        .from('campaign-media')
-        .upload(filePath, file);
-      if (!error) {
-        const { data: urlData } = supabase.storage
-          .from('campaign-media')
-          .getPublicUrl(filePath);
-        setForm((prev) => ({
-          ...prev,
-          media: [...(prev.media || []), urlData.publicUrl],
-        }));
-      }
+      const storageRef = ref(storage, filePath);
+      const snapshot = await uploadBytes(storageRef, file);
+      const downloadUrl = await getDownloadURL(snapshot.ref);
+      setForm((prev) => ({
+        ...prev,
+        media: [...(prev.media || []), downloadUrl],
+      }));
     }
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const removeMedia = async (idx) => {
     const url = form.media[idx];
-    // Try to delete from storage
-    const match = url?.split('/campaign-media/')[1];
-    if (match) {
-      await supabase.storage.from('campaign-media').remove([decodeURIComponent(match)]);
-    }
+    try {
+      const urlObj = new URL(url);
+      const pathMatch = urlObj.pathname.match(/\/o\/(.+?)(\?|$)/);
+      if (pathMatch) {
+        const filePath = decodeURIComponent(pathMatch[1]);
+        await deleteObject(ref(storage, filePath));
+      }
+    } catch {}
     setForm((prev) => ({
       ...prev,
       media: prev.media.filter((_, i) => i !== idx),

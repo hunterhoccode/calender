@@ -1,17 +1,28 @@
 import { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
-import { supabase } from '../lib/supabase';
+import {
+  signInWithEmailAndPassword,
+  signOut,
+  createUserWithEmailAndPassword,
+  updatePassword,
+  onAuthStateChanged,
+} from 'firebase/auth';
+import {
+  doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc,
+  collection, query, orderBy, serverTimestamp,
+} from 'firebase/firestore';
+import { auth, db } from '../lib/firebase';
 
 const AuthContext = createContext();
 
 export const ROLES = {
-  admin: { label: 'Admin', color: '#6366f1' },
+  admin:  { label: 'Admin',  color: '#6366f1' },
   editor: { label: 'Editor', color: '#10b981' },
   viewer: { label: 'Viewer', color: '#64748b' },
 };
 
 export const PERMISSIONS = {
-  admin: { canCreate: true, canEdit: true, canDelete: true, canManageUsers: true, canManageBrands: true },
-  editor: { canCreate: true, canEdit: true, canDelete: false, canManageUsers: false, canManageBrands: false },
+  admin:  { canCreate: true,  canEdit: true,  canDelete: true,  canManageUsers: true,  canManageBrands: true  },
+  editor: { canCreate: true,  canEdit: true,  canDelete: false, canManageUsers: false, canManageBrands: false },
   viewer: { canCreate: false, canEdit: false, canDelete: false, canManageUsers: false, canManageBrands: false },
 };
 
@@ -25,85 +36,60 @@ const initialState = {
 
 function authReducer(state, action) {
   switch (action.type) {
-    case 'LOGIN_SUCCESS':
-      return { ...state, currentUser: action.payload, error: null, restoring: false };
-    case 'LOGOUT':
-      return { ...state, currentUser: null, error: null, restoring: false };
-    case 'RESTORE_DONE':
-      return { ...state, restoring: false };
-    case 'SET_ERROR':
-      return { ...state, error: action.payload };
-    case 'CLEAR_ERROR':
-      return { ...state, error: null };
-    case 'SET_USERS':
-      return { ...state, users: action.payload };
-    case 'OPEN_USER_MODAL':
-      return { ...state, userModalOpen: true };
-    case 'CLOSE_USER_MODAL':
-      return { ...state, userModalOpen: false };
-    default:
-      return state;
+    case 'LOGIN_SUCCESS':    return { ...state, currentUser: action.payload, error: null, restoring: false };
+    case 'LOGOUT':           return { ...state, currentUser: null, error: null, restoring: false };
+    case 'RESTORE_DONE':     return { ...state, restoring: false };
+    case 'SET_ERROR':        return { ...state, error: action.payload };
+    case 'CLEAR_ERROR':      return { ...state, error: null };
+    case 'SET_USERS':        return { ...state, users: action.payload };
+    case 'OPEN_USER_MODAL':  return { ...state, userModalOpen: true };
+    case 'CLOSE_USER_MODAL': return { ...state, userModalOpen: false };
+    default: return state;
   }
 }
 
-async function fetchProfile(userId) {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', userId)
-    .single();
-  if (error || !data) return null;
+async function fetchProfile(uid) {
+  const snap = await getDoc(doc(db, 'users', uid));
+  if (!snap.exists()) return null;
+  const d = snap.data();
   return {
-    id: data.id,
-    username: data.username,
-    displayName: data.display_name,
-    role: data.role,
-    createdAt: data.created_at,
+    id:          uid,
+    username:    d.username,
+    displayName: d.displayName,
+    role:        d.role,
+    createdAt:   d.createdAt?.toDate?.()?.toISOString() || d.createdAt,
   };
 }
 
 export function AuthProvider({ children }) {
   const [state, dispatch] = useReducer(authReducer, initialState);
 
-  // Restore session on page load
   useEffect(() => {
-    let mounted = true;
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (!mounted) return;
-      if (session?.user) {
-        const profile = await fetchProfile(session.user.id);
-        if (mounted && profile) {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        const profile = await fetchProfile(firebaseUser.uid);
+        if (profile) {
           dispatch({ type: 'LOGIN_SUCCESS', payload: profile });
           return;
         }
       }
-      if (mounted) dispatch({ type: 'RESTORE_DONE' });
-    }).catch(() => {
-      if (mounted) dispatch({ type: 'RESTORE_DONE' });
+      dispatch({ type: 'RESTORE_DONE' });
     });
-    // Timeout fallback
-    const t = setTimeout(() => { if (mounted) dispatch({ type: 'RESTORE_DONE' }); }, 3000);
-    return () => { mounted = false; clearTimeout(t); };
+    return unsubscribe;
   }, []);
 
-  // Load all users (for user management)
   const loadUsers = useCallback(async () => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .order('created_at');
-    if (!error && data) {
-      dispatch({
-        type: 'SET_USERS',
-        payload: data.map((u) => ({
-          id: u.id,
-          username: u.username,
-          displayName: u.display_name,
-          role: u.role,
-          createdAt: u.created_at,
-        })),
-      });
-    }
+    const snap = await getDocs(query(collection(db, 'users'), orderBy('createdAt')));
+    dispatch({
+      type: 'SET_USERS',
+      payload: snap.docs.map((d) => ({
+        id:          d.id,
+        username:    d.data().username,
+        displayName: d.data().displayName,
+        role:        d.data().role,
+        createdAt:   d.data().createdAt?.toDate?.()?.toISOString() || d.data().createdAt,
+      })),
+    });
   }, []);
 
   useEffect(() => {
@@ -113,130 +99,77 @@ export function AuthProvider({ children }) {
   const login = async (email, password) => {
     dispatch({ type: 'CLEAR_ERROR' });
     try {
-      const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/auth/v1/token?grant_type=password`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-        },
-        body: JSON.stringify({ email, password }),
-      });
-      const data = await resp.json();
-
-      if (!resp.ok || !data.access_token) {
-        dispatch({ type: 'SET_ERROR', payload: 'Email hoặc mật khẩu không đúng' });
-        return false;
-      }
-
-      // Set session in supabase client
-      await supabase.auth.setSession({
-        access_token: data.access_token,
-        refresh_token: data.refresh_token,
-      });
-
-      // Fetch profile
-      const profile = await fetchProfile(data.user.id);
+      const cred = await signInWithEmailAndPassword(auth, email, password);
+      const profile = await fetchProfile(cred.user.uid);
       if (profile) {
         dispatch({ type: 'LOGIN_SUCCESS', payload: profile });
         return true;
       }
-
       dispatch({ type: 'SET_ERROR', payload: 'Không tìm thấy profile' });
       return false;
-    } catch (e) {
-      console.error('Login error:', e);
-      dispatch({ type: 'SET_ERROR', payload: 'Lỗi kết nối, vui lòng thử lại' });
+    } catch {
+      dispatch({ type: 'SET_ERROR', payload: 'Email hoặc mật khẩu không đúng' });
       return false;
     }
   };
 
   const logout = async () => {
-    try { await supabase.auth.signOut(); } catch {}
+    try { await signOut(auth); } catch {}
     dispatch({ type: 'LOGOUT' });
   };
 
   const register = async (email, password, displayName, role = 'viewer') => {
     dispatch({ type: 'CLEAR_ERROR' });
-
     if (!email.trim() || !password.trim() || !displayName.trim()) {
       dispatch({ type: 'SET_ERROR', payload: 'Vui lòng điền đầy đủ thông tin' });
       return false;
     }
-
     if (password.length < 6) {
       dispatch({ type: 'SET_ERROR', payload: 'Mật khẩu tối thiểu 6 ký tự' });
       return false;
     }
-
     try {
-      const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/auth/v1/signup`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-        },
-        body: JSON.stringify({
-          email,
-          password,
-          data: {
-            username: email.split('@')[0],
-            display_name: displayName,
-            role,
-          },
-        }),
+      const cred = await createUserWithEmailAndPassword(auth, email, password);
+      const uid = cred.user.uid;
+      const username = email.split('@')[0] + '-' + uid.substring(0, 8);
+      await setDoc(doc(db, 'users', uid), {
+        username,
+        displayName,
+        role,
+        createdAt: serverTimestamp(),
       });
-      const result = await resp.json();
-
-      if (!resp.ok) {
-        dispatch({ type: 'SET_ERROR', payload: result.error?.message || result.msg || 'Lỗi tạo tài khoản' });
-        return false;
-      }
-
-      const userId = result.id || result.user?.id;
-      if (userId) {
-        // Create profile via RPC (bypasses RLS)
-        const username = email.split('@')[0] + '-' + userId.substring(0, 8);
-        await supabase.rpc('create_profile', {
-          user_id: userId,
-          user_username: username,
-          user_display_name: displayName,
-          user_role: role,
-        });
-      }
-
       await loadUsers();
       return true;
     } catch (e) {
-      console.error('Register error:', e);
-      dispatch({ type: 'SET_ERROR', payload: 'Lỗi kết nối, vui lòng thử lại' });
+      const msg = e.code === 'auth/email-already-in-use'
+        ? 'Email đã được sử dụng'
+        : 'Lỗi tạo tài khoản: ' + e.message;
+      dispatch({ type: 'SET_ERROR', payload: msg });
       return false;
     }
   };
 
   const updateUser = async (userId, updates) => {
     const dbUpdates = {};
-    if (updates.role) dbUpdates.role = updates.role;
-    if (updates.displayName) dbUpdates.display_name = updates.displayName;
-
-    const { error } = await supabase.from('profiles').update(dbUpdates).eq('id', userId);
-    if (!error) {
-      await loadUsers();
-      if (state.currentUser?.id === userId) {
-        const profile = await fetchProfile(userId);
-        if (profile) dispatch({ type: 'LOGIN_SUCCESS', payload: profile });
-      }
+    if (updates.role)        dbUpdates.role        = updates.role;
+    if (updates.displayName) dbUpdates.displayName = updates.displayName;
+    await updateDoc(doc(db, 'users', userId), dbUpdates);
+    await loadUsers();
+    if (state.currentUser?.id === userId) {
+      const profile = await fetchProfile(userId);
+      if (profile) dispatch({ type: 'LOGIN_SUCCESS', payload: profile });
     }
   };
 
   const updateUserPassword = async (userId, newPassword) => {
-    if (userId === state.currentUser?.id) {
-      await supabase.auth.updateUser({ password: newPassword });
+    if (userId === state.currentUser?.id && auth.currentUser) {
+      await updatePassword(auth.currentUser, newPassword);
     }
   };
 
   const deleteUser = async (userId) => {
     if (userId === state.currentUser?.id) return;
-    await supabase.from('profiles').delete().eq('id', userId);
+    await deleteDoc(doc(db, 'users', userId));
     await loadUsers();
   };
 
@@ -247,19 +180,12 @@ export function AuthProvider({ children }) {
   };
 
   const value = {
-    state,
-    dispatch,
+    state, dispatch,
     currentUser: state.currentUser,
     users: state.users,
     isLoggedIn: !!state.currentUser,
     loading: state.restoring,
-    login,
-    logout,
-    register,
-    updateUser,
-    updateUserPassword,
-    deleteUser,
-    hasPermission,
+    login, logout, register, updateUser, updateUserPassword, deleteUser, hasPermission,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

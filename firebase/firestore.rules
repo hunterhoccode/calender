@@ -20,9 +20,18 @@ service cloud.firestore {
 
     // Users
     match /users/{userId} {
-      allow read: if isAuth();
-      allow create: if isAuth();
-      allow update: if isAuth() && (request.auth.uid == userId || isAdmin());
+      // Only self or admin can read a user document
+      allow read: if isAuth() && (request.auth.uid == userId || isAdmin());
+      // Self-registration: must create own document, role must be 'viewer'
+      allow create: if isAuth()
+        && request.auth.uid == userId
+        && request.resource.data.role == 'viewer';
+      // Users can update their own displayName but NOT their own role; admins can update anything
+      allow update: if isAuth() && (
+        (request.auth.uid == userId
+          && !('role' in request.resource.data.diff(resource.data).affectedKeys()))
+        || isAdmin()
+      );
       allow delete: if isAdmin() && request.auth.uid != userId;
     }
 

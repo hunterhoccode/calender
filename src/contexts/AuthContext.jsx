@@ -118,7 +118,7 @@ export function AuthProvider({ children }) {
     dispatch({ type: 'LOGOUT' });
   };
 
-  const register = async (email, password, displayName, role = 'viewer') => {
+  const register = async (email, password, displayName) => {
     dispatch({ type: 'CLEAR_ERROR' });
     if (!email.trim() || !password.trim() || !displayName.trim()) {
       dispatch({ type: 'SET_ERROR', payload: 'Vui lòng điền đầy đủ thông tin' });
@@ -135,16 +135,14 @@ export function AuthProvider({ children }) {
       await setDoc(doc(db, 'users', uid), {
         username,
         displayName,
-        role,
+        role: 'viewer', // role is always viewer on self-registration; admin assigns roles manually
         createdAt: serverTimestamp(),
       });
       await loadUsers();
       return true;
     } catch (e) {
-      const msg = e.code === 'auth/email-already-in-use'
-        ? 'Email đã được sử dụng'
-        : 'Lỗi tạo tài khoản: ' + e.message;
-      dispatch({ type: 'SET_ERROR', payload: msg });
+      // Generic message to prevent email enumeration
+      dispatch({ type: 'SET_ERROR', payload: 'Không thể tạo tài khoản. Vui lòng thử lại.' });
       return false;
     }
   };

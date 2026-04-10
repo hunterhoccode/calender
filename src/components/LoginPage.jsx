@@ -88,9 +88,6 @@ export default function LoginPage() {
             <button type="submit" className="btn btn-primary login-submit" disabled={loading}>
               {loading ? 'Đang xử lý...' : 'Đăng Nhập'}
             </button>
-            <p className="login-hint">
-              Tài khoản mặc định: <strong>admin@cmp.local</strong> / <strong>admin123</strong>
-            </p>
           </form>
         )}
 

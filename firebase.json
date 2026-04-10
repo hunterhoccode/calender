@@ -1,0 +1,11 @@
+{
+  "firestore": {
+    "rules": "firebase/firestore.rules"
+  },
+  "storage": [
+    {
+      "bucket": "calender-d79c0.firebasestorage.app",
+      "rules": "firebase/storage.rules"
+    }
+  ]
+}

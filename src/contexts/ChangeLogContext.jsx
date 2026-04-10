@@ -4,6 +4,7 @@ import {
   addDoc, getDocs, writeBatch, serverTimestamp,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { useAuth } from './AuthContext';
 
 const ChangeLogContext = createContext();
 
@@ -20,8 +21,10 @@ const ACTION_LABELS = {
 
 export function ChangeLogProvider({ children }) {
   const [logs, setLogs] = useState([]);
+  const { currentUser } = useAuth();
 
   useEffect(() => {
+    if (!currentUser) return;
     const q = query(collection(db, 'changelog'), orderBy('createdAt', 'desc'), limit(500));
     const unsub = onSnapshot(q, (snap) => {
       setLogs(snap.docs.map((d) => ({
@@ -37,7 +40,7 @@ export function ChangeLogProvider({ children }) {
       })));
     });
     return unsub;
-  }, []);
+  }, [currentUser]);
 
   const addLog = useCallback(async (user, action, targetName, details = null) => {
     await addDoc(collection(db, 'changelog'), {

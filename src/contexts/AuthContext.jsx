@@ -11,6 +11,7 @@ import {
   collection, query, orderBy, serverTimestamp,
 } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
+import { restGetDoc } from '../lib/firestoreRest';
 
 const AuthContext = createContext();
 
@@ -49,15 +50,15 @@ function authReducer(state, action) {
 }
 
 async function fetchProfile(uid) {
-  const snap = await getDoc(doc(db, 'users', uid));
-  if (!snap.exists()) return null;
-  const d = snap.data();
+  const idToken = await auth.currentUser?.getIdToken();
+  const d = await restGetDoc(`users/${uid}`, idToken);
+  if (!d) return null;
   return {
     id:          uid,
     username:    d.username,
     displayName: d.displayName,
     role:        d.role,
-    createdAt:   d.createdAt?.toDate?.()?.toISOString() || d.createdAt,
+    createdAt:   d.createdAt,
   };
 }
 

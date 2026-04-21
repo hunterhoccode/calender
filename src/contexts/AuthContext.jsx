@@ -66,14 +66,17 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        const profile = await fetchProfile(firebaseUser.uid);
-        if (profile) {
-          dispatch({ type: 'LOGIN_SUCCESS', payload: profile });
-          return;
-        }
+      if (!firebaseUser) {
+        dispatch({ type: 'RESTORE_DONE' });
+        return;
       }
       dispatch({ type: 'RESTORE_DONE' });
+      try {
+        const profile = await fetchProfile(firebaseUser.uid);
+        if (profile) dispatch({ type: 'LOGIN_SUCCESS', payload: profile });
+      } catch (e) {
+        console.error('fetchProfile failed:', e);
+      }
     });
     return unsubscribe;
   }, []);

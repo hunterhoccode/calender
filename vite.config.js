@@ -8,12 +8,8 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (!id.includes('node_modules')) return;
-          if (id.includes('firebase/auth'))      return 'firebase-auth';
-          if (id.includes('firebase/firestore')) return 'firebase-firestore';
-          if (id.includes('firebase/storage'))   return 'firebase-storage';
-          if (id.includes('firebase/app'))       return 'firebase-app';
-          if (id.includes('@firebase'))          return 'firebase-core';
-          if (id.includes('react-dom') || id.includes('/react/')) return 'vendor-react';
+          if (id.includes('firebase') || id.includes('@firebase')) return 'firebase';
+          if (id.includes('react-dom') || id.includes('/react/') || id.includes('scheduler')) return 'vendor-react';
           if (id.includes('lucide-react'))       return 'vendor-icons';
           if (id.includes('html2canvas'))        return 'vendor-export';
           if (id.includes('marked') || id.includes('dompurify')) return 'vendor-markdown';

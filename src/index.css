@@ -15,7 +15,12 @@
   --radius-md: 10px;
   --radius-lg: 14px;
   --radius-xl: 20px;
+  --radius-xxl: 30px;
   --radius-full: 9999px;
+
+  /* Framer-inspired single chromatic accent for focus/link */
+  --accent-blue: #0099ff;
+  --accent-blue-ring: rgba(0, 153, 255, 0.15);
 
   --space-xs: 4px;
   --space-sm: 8px;
@@ -43,10 +48,11 @@
 
 /* ===== Dark Theme (default) ===== */
 [data-theme="dark"] {
-  --bg-primary: #0a0e1a;
-  --bg-secondary: #111827;
-  --bg-tertiary: #1a2036;
-  --bg-card: rgba(26, 32, 54, 0.7);
+  /* Framer-inspired near-black canvas + opaque surface ladder */
+  --bg-primary: #090909;
+  --bg-secondary: #141414;
+  --bg-tertiary: #1c1c1c;
+  --bg-card: #141414;
   --bg-glass: rgba(255, 255, 255, 0.03);
   --bg-hover: rgba(255, 255, 255, 0.06);
   --bg-active: rgba(99, 102, 241, 0.1);
@@ -75,8 +81,9 @@
   --campaign-green-bg: rgba(16, 185, 129, 0.22);
   --campaign-green-border: rgba(16, 185, 129, 0.5);
 
-  --border-color: rgba(255, 255, 255, 0.06);
-  --border-hover: rgba(255, 255, 255, 0.12);
+  --border-color: #262626;
+  --border-hover: #333333;
+  --hairline-soft: #1a1a1a;
 
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
@@ -154,8 +161,17 @@ body {
   background: var(--bg-primary);
   color: var(--text-primary);
   line-height: 1.6;
+  letter-spacing: -0.01em;
   min-height: 100dvh;
   overflow-x: hidden;
+}
+
+/* Framer-inspired aggressive negative tracking on display headings */
+h1, h2, h3,
+.splash-title,
+.dashboard-card-title,
+.login-logo h1 {
+  letter-spacing: -0.04em;
 }
 
 #root {
@@ -484,8 +500,8 @@ body {
 }
 
 .btn:focus-visible {
-  outline: 2px solid var(--accent-primary);
-  outline-offset: 2px;
+  outline: none;
+  box-shadow: 0 0 0 1px var(--accent-blue), 0 0 0 4px var(--accent-blue-ring);
 }
 
 .btn:disabled,
@@ -1852,15 +1868,16 @@ body {
 .form-input:focus,
 .form-select:focus,
 .form-textarea:focus {
-  border-color: var(--accent-primary);
-  box-shadow: 0 0 0 3px var(--accent-primary-glow);
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 3px var(--accent-blue-ring);
 }
 
 .form-input:focus-visible,
 .form-select:focus-visible,
 .form-textarea:focus-visible {
-  outline: 2px solid var(--accent-primary);
-  outline-offset: 2px;
+  outline: none;
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 3px var(--accent-blue-ring);
 }
 
 .form-textarea {

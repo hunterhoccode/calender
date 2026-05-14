@@ -2,14 +2,14 @@
 
 /* ===== CSS Variables / Design Tokens ===== */
 :root {
-  /* Shared tokens */
-  --accent: #6366f1;
-  --accent-primary: #6366f1;
-  --accent-primary-hover: #818cf8;
-  --accent-primary-glow: rgba(99, 102, 241, 0.3);
-  --accent-secondary: #8b5cf6;
-  --accent-gradient: linear-gradient(135deg, #6366f1, #8b5cf6);
-  --accent-hover: #a5b4fc;
+  /* Warm Sunset brand palette */
+  --accent: #ff6b35;
+  --accent-primary: #ff6b35;
+  --accent-primary-hover: #ff8559;
+  --accent-primary-glow: rgba(255, 107, 53, 0.28);
+  --accent-secondary: #ffa54d;
+  --accent-gradient: linear-gradient(135deg, #ff6b35, #ffa54d);
+  --accent-hover: #ffb37b;
 
   --radius-sm: 6px;
   --radius-md: 10px;
@@ -18,9 +18,9 @@
   --radius-xxl: 30px;
   --radius-full: 9999px;
 
-  /* Framer-inspired single chromatic accent for focus/link */
-  --accent-blue: #0099ff;
-  --accent-blue-ring: rgba(0, 153, 255, 0.15);
+  /* Single chromatic focus/link signal — matches warm sunset accent */
+  --accent-blue: #ff6b35;
+  --accent-blue-ring: rgba(255, 107, 53, 0.2);
 
   --space-xs: 4px;
   --space-sm: 8px;
@@ -48,19 +48,19 @@
 
 /* ===== Dark Theme (default) ===== */
 [data-theme="dark"] {
-  /* Framer-inspired near-black canvas + opaque surface ladder */
-  --bg-primary: #090909;
-  --bg-secondary: #141414;
-  --bg-tertiary: #1c1c1c;
-  --bg-card: #141414;
+  /* Warm Sunset: warm-black canvas + warm gray surface ladder */
+  --bg-primary: #0f0d0c;
+  --bg-secondary: #1a1817;
+  --bg-tertiary: #242120;
+  --bg-card: #1a1817;
   --bg-glass: rgba(255, 255, 255, 0.03);
-  --bg-hover: rgba(255, 255, 255, 0.06);
-  --bg-active: rgba(99, 102, 241, 0.1);
+  --bg-hover: rgba(255, 255, 255, 0.05);
+  --bg-active: rgba(255, 107, 53, 0.1);
 
-  --text-primary: #f1f5f9;
-  --text-secondary: #94a3b8;
-  --text-tertiary: #78889a;
-  --text-muted: #5a6b7d;
+  --text-primary: #faf8f6;
+  --text-secondary: #b8b0aa;
+  --text-tertiary: #807872;
+  --text-muted: #5e5854;
 
   --campaign-red: #f87171;
   --campaign-red-bg: rgba(239, 68, 68, 0.22);
@@ -74,16 +74,16 @@
   --campaign-purple: #c084fc;
   --campaign-purple-bg: rgba(168, 85, 247, 0.22);
   --campaign-purple-border: rgba(168, 85, 247, 0.5);
-  --campaign-orange: #fb923c;
-  --campaign-orange-bg: rgba(249, 115, 22, 0.22);
-  --campaign-orange-border: rgba(249, 115, 22, 0.5);
+  --campaign-orange: #f59e0b;
+  --campaign-orange-bg: rgba(245, 158, 11, 0.22);
+  --campaign-orange-border: rgba(245, 158, 11, 0.5);
   --campaign-green: #34d399;
   --campaign-green-bg: rgba(16, 185, 129, 0.22);
   --campaign-green-border: rgba(16, 185, 129, 0.5);
 
-  --border-color: #262626;
-  --border-hover: #333333;
-  --hairline-soft: #1a1a1a;
+  --border-color: #2e2a28;
+  --border-hover: #3d3835;
+  --hairline-soft: #1f1c1b;
 
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
@@ -95,21 +95,22 @@
 
 /* ===== Light Theme ===== */
 [data-theme="light"] {
-  --bg-primary: #f1f5f9;
+  /* Warm Sunset light: cream canvas + warm grays */
+  --bg-primary: #faf8f5;
   --bg-secondary: #ffffff;
-  --bg-tertiary: #e2e8f0;
+  --bg-tertiary: #f0ece6;
   --bg-card: #ffffff;
   --bg-glass: rgba(0, 0, 0, 0.03);
-  --bg-hover: rgba(99, 102, 241, 0.05);
-  --bg-active: rgba(99, 102, 241, 0.1);
+  --bg-hover: rgba(255, 107, 53, 0.06);
+  --bg-active: rgba(255, 107, 53, 0.1);
 
-  --text-primary: #0f172a;
-  --text-secondary: #334155;
-  --text-tertiary: #64748b;
-  --text-muted: #94a3b8;
+  --text-primary: #1a1410;
+  --text-secondary: #3d342c;
+  --text-tertiary: #6b5e54;
+  --text-muted: #998a7e;
 
-  --accent-primary-hover: #4f46e5;
-  --accent-primary-glow: rgba(99, 102, 241, 0.2);
+  --accent-primary-hover: #e85a25;
+  --accent-primary-glow: rgba(255, 107, 53, 0.18);
 
   --campaign-red: #dc2626;
   --campaign-red-bg: #fef2f2;
@@ -123,20 +124,21 @@
   --campaign-purple: #7c3aed;
   --campaign-purple-bg: #f5f3ff;
   --campaign-purple-border: #c4b5fd;
-  --campaign-orange: #c2410c;
-  --campaign-orange-bg: #fff7ed;
-  --campaign-orange-border: #fdba74;
+  --campaign-orange: #a16207;
+  --campaign-orange-bg: #fef9c3;
+  --campaign-orange-border: #fde047;
   --campaign-green: #047857;
   --campaign-green-bg: #ecfdf5;
   --campaign-green-border: #6ee7b7;
 
-  --border-color: #e2e8f0;
-  --border-hover: #cbd5e1;
+  --border-color: #ebe4dc;
+  --border-hover: #d8cfc3;
+  --hairline-soft: #f0ece6;
 
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
-  --shadow-glow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+  --shadow-glow: 0 0 0 3px rgba(255, 107, 53, 0.15);
 
   color-scheme: light;
 }

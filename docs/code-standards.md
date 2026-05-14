@@ -117,9 +117,12 @@ Không bao giờ chỉ check ở frontend mà bỏ DB.
 
 ## Security
 
-- Markdown từ user render qua `marked` + `dompurify` (XSS safe)
+- Markdown từ user render qua `marked` + `dompurify` (XSS safe). Giữ `dompurify >= 3.3.4` để tránh CVE FORBID_TAGS bypass + prototype pollution.
 - API key Firebase là public by design — bảo vệ bằng Firestore Security Rules + HTTP referrer restriction (Google Cloud Console)
 - Không lưu sensitive data trong localStorage
+- Chạy `npm audit` định kỳ; `npm audit fix` ngay khi có advisory mới (đặc biệt cho `firebase`, `dompurify`, `protobufjs`)
+- Path segment khi gọi Firestore REST phải `encodeURIComponent` (xem `src/lib/firestoreRest.js`)
+- `.env*` phải gitignored — không bao giờ commit `.env`
 
 ## Accessibility
 

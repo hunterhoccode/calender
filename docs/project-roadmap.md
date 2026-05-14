@@ -107,6 +107,16 @@ Gợi ý thời điểm tốt để chạy campaign, phân tích overlap, đề 
 |------|--------|---------|
 | Migrate sang TypeScript | Thấp | JSX hiện tại hoạt động tốt |
 | Unit tests | Thấp | Cần khi codebase scale |
-| Restrict Firebase API key (HTTP referrers) | Trung bình | Làm trên Google Cloud Console |
+| Restrict Firebase API key (HTTP referrers) | Trung bình | Làm trên Google Cloud Console — chưa tự động hóa được qua code |
+| Add production domain vào Firebase Auth → Authorized domains | Trung bình | Cần làm khi có custom domain |
 | Migrate fully sang Firestore REST cho mọi reads | Thấp | Tránh "client is offline" do extension chặn SDK WebChannel |
 | index.css quá lớn (4039 LOC) | Thấp | Tách thành CSS modules khi cần |
+
+## Security & Maintenance
+
+| Hoạt động | Tần suất | Ghi chú |
+|-----------|----------|---------|
+| `npm audit` | Mỗi tháng / trước release | `npm audit fix` xử lý ngay nếu Critical/High |
+| Review Firestore Security Rules | Khi thêm collection mới | Deploy qua `firebase deploy --only firestore:rules` |
+| Rotate Firebase API key | Khi nghi ngờ leak | Tạo key mới trên Google Cloud Console + update Vercel env vars |
+| Backup Firestore | Trước migration / hàng tuần | `gcloud firestore export` (cần Blaze plan cho scheduled backup) |

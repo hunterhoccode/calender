@@ -66,7 +66,7 @@ export default function LoginPage() {
                 type="email"
                 value={form.email}
                 onChange={(e) => handleChange('email', e.target.value)}
-                placeholder="admin@cmp.local"
+                placeholder="user@email.com"
                 autoFocus
               />
             </div>

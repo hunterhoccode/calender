@@ -26,11 +26,15 @@ export function decodeDoc(doc) {
   return { id, ...decodeFields(doc.fields || {}) };
 }
 
+function encodePath(path) {
+  return path.split('/').map(encodeURIComponent).join('/');
+}
+
 export async function restGetDoc(path, idToken) {
-  const res = await fetch(`${BASE}/${path}`, {
+  const res = await fetch(`${BASE}/${encodePath(path)}`, {
     headers: idToken ? { Authorization: `Bearer ${idToken}` } : {},
   });
   if (res.status === 404) return null;
-  if (!res.ok) throw new Error(`Firestore REST ${res.status}: ${await res.text()}`);
+  if (!res.ok) throw new Error(`Firestore REST ${res.status}`);
   return decodeDoc(await res.json());
 }

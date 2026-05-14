@@ -80,7 +80,7 @@
 
 Một tính năng được coi là hoàn thành khi:
 1. Hoạt động đúng với cả 3 role (Admin, Editor, Viewer)
-2. RLS Supabase chặn đúng ở DB layer
+2. Firestore Security Rules chặn đúng ở DB layer
 3. Real-time sync hoạt động (thay đổi của user A hiện cho user B)
 4. Responsive trên mobile
 5. Change log ghi nhận đúng action

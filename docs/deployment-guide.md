@@ -1,65 +1,51 @@
-# Deployment Guide — CMP PRO
+# Deployment Guide — CMP PRO (Firebase)
 
 ## Yêu cầu
 
 - Node.js >= 18
-- Tài khoản Supabase (free tier là đủ)
+- Tài khoản Google + Firebase project (free Spark plan đủ dùng)
 
-## 1. Setup Supabase
+## 1. Setup Firebase Project
 
 ### Tạo project
-1. Vào [supabase.com](https://supabase.com) → New project
-2. Lưu lại **Project URL** và **anon key** (Settings > API)
+1. Vào [console.firebase.google.com](https://console.firebase.google.com) → **Add project**
+2. Enable **Authentication** → Sign-in method → **Email/Password**
+3. Enable **Firestore Database** → Start in production mode → region `asia-southeast1` (cho VN)
+4. Enable **Storage** → Start in production mode
 
-### Chạy schema
-Vào Supabase Dashboard → SQL Editor → paste nội dung `supabase/schema.sql` → Run.
-
-Schema sẽ tạo:
-- Tables: `profiles`, `brands`, `campaigns`, `milestones`, `changelog`
-- Triggers: auto-create profile, auto-update `updated_at`, trim changelog
-- RLS policies cho tất cả tables
-- Realtime publication cho campaigns, brands, milestones, changelog
-
-### (Tùy chọn) Seed data
-```bash
-# Cài dotenv nếu chưa có
-npm install dotenv
-
-# Chạy seed
-node scripts/seed.cjs
-```
-
-### Tạo RPC function
-Chạy thêm trong SQL Editor:
-```sql
-CREATE OR REPLACE FUNCTION create_profile(
-  user_id UUID,
-  user_username TEXT,
-  user_display_name TEXT,
-  user_role TEXT DEFAULT 'viewer'
-)
-RETURNS void AS $$
-  INSERT INTO profiles (id, username, display_name, role)
-  VALUES (user_id, user_username, user_display_name, user_role)
-  ON CONFLICT (id) DO NOTHING;
-$$ LANGUAGE sql SECURITY DEFINER;
-```
+### Lấy Firebase Config
+Firebase Console → Project Settings → General → **Your apps** → Add app (Web) → copy `firebaseConfig` object (6 giá trị cần).
 
 ## 2. Cấu hình môi trường
 
-Copy file `.env.example` thành `.env` và điền giá trị thực:
 ```bash
 cp .env.example .env
 ```
 
+Điền 6 giá trị vào `.env`:
 ```env
-VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_ANON_KEY=your-anon-key
+VITE_FIREBASE_API_KEY=AIzaSy...
+VITE_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=your-project-id
+VITE_FIREBASE_STORAGE_BUCKET=your-project.firebasestorage.app
+VITE_FIREBASE_MESSAGING_SENDER_ID=123456789
+VITE_FIREBASE_APP_ID=1:123456789:web:abc123
 ```
 
-Cả `src/lib/supabase.js` và `src/contexts/AuthContext.jsx` đều đọc từ `import.meta.env`.
+## 3. Deploy Security Rules
 
-## 3. Chạy local
+**Firestore Rules:** Firebase Console → Firestore → **Rules** → paste nội dung `firebase/firestore.rules` → **Publish**.
+
+**Storage Rules:** Firebase Console → Storage → **Rules** → paste nội dung `firebase/storage.rules` → **Publish**.
+
+Hoặc dùng Firebase CLI:
+```bash
+npm i -g firebase-tools
+firebase login
+firebase deploy --only firestore:rules,storage
+```
+
+## 4. Chạy local
 
 ```bash
 npm install
@@ -67,36 +53,41 @@ npm run dev
 # App chạy tại http://localhost:5173
 ```
 
-## 4. Build production
+## 5. Build production
 
 ```bash
-npm run build
-# Output trong dist/
-npm run preview   # kiểm tra build locally
+npm run build      # output dist/
+npm run preview    # kiểm tra build local
 ```
 
-## 5. Deploy
+## 6. Deploy hosting
 
 ### Vercel (khuyến nghị)
 ```bash
 npm i -g vercel
 vercel --prod
 ```
-Thêm environment variables trong Vercel dashboard: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`.
+Thêm 6 env vars `VITE_FIREBASE_*` trong Vercel dashboard (Settings → Environment Variables).
 
 ### Netlify
 ```bash
 npm i -g netlify-cli
 netlify deploy --prod --dir=dist
 ```
+Thêm env vars trong Netlify dashboard.
 
 ### Cloudflare Pages
-Kết nối repo GitHub → Build command: `npm run build` → Build output: `dist`.
+Kết nối repo GitHub → Build command: `npm run build` → Build output: `dist` → thêm env vars.
+
+### Firebase Hosting
+```bash
+firebase init hosting   # chọn dist làm public dir, single-page app: yes
+firebase deploy --only hosting
+```
 
 ### Static hosting khác
-Upload toàn bộ `dist/` lên bất kỳ static host nào. Cần cấu hình rewrite tất cả route về `index.html` (SPA routing).
+Upload `dist/` → cấu hình rewrite mọi route về `index.html` (SPA routing).
 
-**Vercel:** tự động xử lý.
 **Nginx:**
 ```nginx
 location / {
@@ -104,31 +95,33 @@ location / {
 }
 ```
 
-## 6. Tạo tài khoản Admin đầu tiên
+## 7. Tạo tài khoản Admin đầu tiên
 
-Sau khi deploy:
-1. Vào Supabase Dashboard → Authentication → Users → Add user
-2. Điền email + password
-3. Vào SQL Editor, cập nhật role:
-```sql
-UPDATE profiles SET role = 'admin' WHERE id = 'user-uuid-here';
-```
+1. Vào app → tab **Đăng Ký** → tạo tài khoản với email/password
+2. Firebase Console → Authentication → Users → copy UID của user vừa tạo
+3. Firebase Console → Firestore → collection `users` → document `{uid}` → sửa field `role` thành `"admin"` → Save
 
-Hoặc dùng register trong app rồi update role qua SQL.
+## 8. Hardening (khuyến nghị production)
 
-## 7. Supabase Storage (media upload)
+### Restrict API key
+Google Cloud Console → APIs & Services → **Credentials** → click vào API key → **Application restrictions**: HTTP referrers → thêm:
+- `localhost:*`
+- `*.vercel.app/*` (hoặc custom domain)
 
-Tạo bucket `campaign-media` trong Supabase Storage:
-- Public bucket hoặc signed URLs
-- RLS: cho phép authenticated users upload
+Tránh API key bị abuse từ domain khác.
 
-## Checklist trước khi go-live
+### Authorized domains (Auth)
+Firebase Console → Authentication → Settings → **Authorized domains** → thêm domain Vercel/custom của bạn.
 
-- [ ] Schema đã chạy thành công
-- [ ] RPC `create_profile` đã tạo
-- [ ] Realtime enabled cho 4 tables
-- [ ] `.env` đã có đúng URL + key
-- [ ] Refactor hardcoded API key sang env vars
-- [ ] Tài khoản Admin đầu tiên đã tạo
-- [ ] Bucket Storage đã cấu hình (nếu cần upload media)
-- [ ] SPA routing đã cấu hình trên host
+## Checklist trước go-live
+
+- [ ] Authentication Email/Password đã enable
+- [ ] Firestore created (production mode, region asia-southeast1)
+- [ ] Storage created
+- [ ] Firestore rules deployed
+- [ ] Storage rules deployed
+- [ ] `.env` có đủ 6 giá trị `VITE_FIREBASE_*`
+- [ ] Env vars đã thêm vào hosting platform (Vercel/Netlify/CF)
+- [ ] Admin user đầu tiên đã set role
+- [ ] API key đã restrict HTTP referrers
+- [ ] Domain production đã thêm vào Authorized domains

@@ -4,8 +4,8 @@
 
 | Loại | Số lượng |
 |------|---------|
-| Tổng file source | 26 file |
-| Tổng LOC (JS/JSX/CSS) | ~8,559 |
+| Tổng file source | 27 file |
+| Tổng LOC (JS/JSX/CSS) | ~8,600 |
 | Components | 15 |
 | Contexts | 4 |
 | Utils/Libs | 4 |
@@ -37,24 +37,26 @@ marketing-calendar/
 │   │   └── ExportButton.jsx     # Nút export PNG
 │   ├── contexts/                # React contexts (state management)
 │   │   ├── AuthContext.jsx      # Auth state, session, permissions
-│   │   ├── CampaignContext.jsx  # Campaign/brand state + Supabase CRUD
+│   │   ├── CampaignContext.jsx  # Campaign/brand state + Firestore CRUD
 │   │   ├── ThemeContext.jsx     # Dark/Light mode state
-│   │   └── ChangeLogContext.jsx # Changelog state + Supabase writes
+│   │   └── ChangeLogContext.jsx # Changelog state + Firestore writes
 │   ├── lib/
-│   │   ├── supabase.js          # Supabase client (reads from .env)
-│   │   └── dbMappers.js         # snake_case <-> camelCase converters
+│   │   ├── firebase.js          # Firebase app init (Auth, Firestore, Storage)
+│   │   ├── firestoreRest.js     # Firestore REST API fallback (bypass SDK)
+│   │   └── dbMappers.js         # Defaults cho campaign array fields
 │   ├── utils/
 │   │   └── dateUtils.js         # Date helpers (addMonths, formatWeekRange...)
 │   └── assets/                  # Static assets (hero.png)
-├── supabase/
-│   └── schema.sql               # DDL đầy đủ + RLS policies + triggers
-├── scripts/
-│   └── seed.cjs                 # Seed data script
+├── firebase/
+│   ├── firestore.rules          # Firestore Security Rules
+│   └── storage.rules            # Storage Security Rules
+├── firebase.json                # Firebase CLI deploy config
+├── .mcp.json                    # firebase-tools MCP server config
 ├── docs/                        # Project documentation
 ├── public/                      # Static files (favicon, icons)
 ├── .env.example                 # Required environment variables template
 ├── index.html                   # HTML entry
-├── vite.config.js
+├── vite.config.js               # Vite + code-split manualChunks
 ├── package.json
 └── eslint.config.js
 ```
@@ -62,26 +64,33 @@ marketing-calendar/
 ## File quan trọng nhất
 
 ### [src/contexts/CampaignContext.jsx](../src/contexts/CampaignContext.jsx)
-Trung tâm của toàn bộ state management. Dùng `useReducer` cho local state và `useCallback` cho Supabase CRUD. Xử lý:
-- Load dữ liệu lần đầu khi user login
-- Real-time subscriptions (campaigns, brands, milestones)
+Trung tâm của toàn bộ state management. Dùng `useReducer` cho local state và `useCallback` cho Firestore CRUD. Xử lý:
+- Load dữ liệu khi user login (onSnapshot listeners cho campaigns + brands)
+- Real-time subscriptions qua Firestore `onSnapshot`
 - Tất cả CRUD operations với permission check trước khi thực thi
 - Filtered campaigns selector
 
 ### [src/contexts/AuthContext.jsx](../src/contexts/AuthContext.jsx)
-Quản lý session Supabase, user profile, và permission system.
-- Restore session khi refresh trang
-- Login/logout/register qua Supabase Auth REST API
+Quản lý session Firebase Auth, user profile, và permission system.
+- Restore session qua `onAuthStateChanged`
+- Login/logout/register qua Firebase Auth SDK
+- `fetchProfile` dùng Firestore REST API (`firestoreRest.js`) để bypass SDK WebChannel có thể bị extension chặn
 - `hasPermission(permKey)` dùng bởi CampaignContext để guard actions
 
+### [src/lib/firebase.js](../src/lib/firebase.js)
+Khởi tạo Firebase app từ 6 env vars `VITE_FIREBASE_*`. Export `auth`, `db`, `storage` instances.
+
+### [src/lib/firestoreRest.js](../src/lib/firestoreRest.js)
+Helper gọi Firestore REST API trực tiếp (`https://firestore.googleapis.com/v1/...`) qua `fetch` + Bearer idToken. Dùng cho `fetchProfile` khi SDK fail vì WebChannel bị chặn.
+
 ### [src/components/CampaignDrawer.jsx](../src/components/CampaignDrawer.jsx)
-Form phức tạp nhất trong app: tạo/sửa campaign với tất cả fields, milestone editor, media upload.
+Form phức tạp nhất trong app: tạo/sửa campaign với tất cả fields, milestone editor, media upload (Firebase Storage).
 
 ### [src/index.css](../src/index.css)
 Toàn bộ design system: CSS custom properties, component styles, responsive, dark mode, animations.
 
-### [supabase/schema.sql](../supabase/schema.sql)
-DDL đầy đủ bao gồm: tables, indexes, triggers, RLS policies, realtime publication.
+### [firebase/firestore.rules](../firebase/firestore.rules)
+Security Rules cho collections users/brands/campaigns/comments/changelog. Enforce role-based access ở DB layer.
 
 ## Luồng dữ liệu
 
@@ -90,9 +99,9 @@ User action
   → dispatch(action) [CampaignContext]
   → hasPermission check [AuthContext]
   → addLog [ChangeLogContext]
-  → supabaseCrud(action) [Supabase DB]
-  → Realtime event broadcast
-  → rawDispatch(UPSERT/REMOVE) [local state update]
+  → firestoreCrud(action) [Firestore SDK]
+  → onSnapshot triggered
+  → SET_CAMPAIGNS / SET_BRANDS [local state update]
   → React re-render
 ```
 
@@ -100,7 +109,7 @@ User action
 
 | Package | Dùng cho |
 |---------|---------|
-| `@supabase/supabase-js` | Backend client |
+| `firebase` | Backend client (Auth, Firestore, Storage) |
 | `date-fns` | Xử lý date/time |
 | `lucide-react` | SVG icons |
 | `marked` + `dompurify` | Render Markdown an toàn |

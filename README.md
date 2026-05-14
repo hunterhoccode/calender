@@ -5,20 +5,20 @@
 ## Tech Stack
 
 - **Frontend:** React 19, Vite 8, CSS thuần (không dùng Tailwind/UI lib)
-- **Backend:** Supabase (Auth, PostgreSQL, Realtime, Storage)
+- **Backend:** Firebase (Auth, Firestore, Storage)
 - **Thư viện:** date-fns, lucide-react, marked, dompurify, html2canvas
 
 ## Quick Start
 
 ```bash
-cp .env.example .env   # điền VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY
+cp .env.example .env   # điền 6 giá trị VITE_FIREBASE_*
 npm install
 npm run dev            # localhost:5173
 npm run build
 npm run preview
 ```
 
-Xem [deployment-guide.md](docs/deployment-guide.md) để setup Supabase schema và biến môi trường.
+Xem [deployment-guide.md](docs/deployment-guide.md) để setup Firebase project, security rules và biến môi trường.
 
 ## Tính năng chính
 
@@ -28,7 +28,7 @@ Xem [deployment-guide.md](docs/deployment-guide.md) để setup Supabase schema 
 | Campaign CRUD | Tạo/sửa/xóa/nhân bản campaign |
 | Brand Management | Quản lý thương hiệu (Admin only) |
 | Milestones | Mốc tiến độ trong campaign |
-| Real-time | Sync tức thì qua Supabase Realtime |
+| Real-time | Sync tức thì qua Firestore onSnapshot |
 | Role-based | Admin / Editor / Viewer |
 | Export PNG | Xuất ảnh cả 3 view lịch |
 | Change Log | Audit trail toàn bộ thao tác |

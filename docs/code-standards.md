@@ -52,7 +52,7 @@ Dự án dùng **React Context + useReducer** — không Redux, không Zustand.
 
 ### Dispatch pattern
 ```js
-// UI actions: dispatch trực tiếp (không gọi Supabase)
+// UI actions: dispatch trực tiếp (không gọi Firestore)
 dispatch({ type: 'OPEN_DRAWER', payload: campaign });
 
 // Data actions: dispatch qua guarded dispatch (có permission check + log)
@@ -66,27 +66,31 @@ dispatch({ type: 'ADD_CAMPAIGN', payload: { name, startDate, ... } });
 - `OPEN_*` / `CLOSE_*` — toggle UI state
 - `ADD_*`, `UPDATE_*`, `DELETE_*`, `DUPLICATE_*` — CRUD actions (có permission check)
 
-## Supabase Integration
+## Firebase Integration
 
-### DB naming
-- DB columns: `snake_case` (vd: `start_date`, `brand_id`)
-- App objects: `camelCase` (vd: `startDate`, `brandId`)
-- Chuyển đổi qua `src/lib/dbMappers.js` (`mapCampaignFromDb`, `toCamelCase`, `toSnakeCase`)
+### Naming
+- Firestore fields: `camelCase` native (vd: `startDate`, `brandId`)
+- Không cần snake↔camel converter (Firestore native camelCase)
+- `src/lib/dbMappers.js` chỉ đảm bảo default array values (`milestones`, `media`, `channels`)
 
 ### Real-time subscriptions
-Đăng ký trong `CampaignContext` khi `currentUser` có giá trị. Ba channel:
-- `campaigns-realtime` — table `campaigns`
-- `brands-realtime` — table `brands`
-- `milestones-realtime` — table `milestones`
+Đăng ký trong `CampaignContext` khi `currentUser` có giá trị. Hai onSnapshot listeners:
+- `collection(db, 'campaigns')` orderBy `startDate`
+- `collection(db, 'brands')` orderBy `createdAt`
 
-Cleanup channels trong return của `useEffect`.
+ChangeLogContext có listener thứ ba: `collection(db, 'changelog')` orderBy `createdAt` desc, limit 500.
 
-### RLS
+Cleanup unsubscribe trong return của `useEffect`.
+
+### Security Rules
 Mọi permission đều được enforce ở **cả 2 layer**:
 1. **Frontend** (`hasPermission` trong AuthContext)
-2. **Database** (RLS policies trong schema.sql)
+2. **Firestore** (Security Rules trong `firebase/firestore.rules`)
 
 Không bao giờ chỉ check ở frontend mà bỏ DB.
+
+### REST fallback
+`AuthContext.fetchProfile` dùng `restGetDoc` từ `src/lib/firestoreRest.js` (HTTP GET trực tiếp) thay vì Firestore SDK. Lý do: SDK WebChannel protocol đôi khi bị adblocker / browser extension chặn → SDK báo "client is offline". REST API qua HTTPS thường thì không bị chặn.
 
 ## CSS Conventions
 
@@ -107,14 +111,14 @@ Không bao giờ chỉ check ở frontend mà bỏ DB.
 
 ## Error Handling
 
-- Lỗi Supabase CRUD: log ra console, không throw (tránh crash UI)
+- Lỗi Firestore CRUD: log ra console, không throw (tránh crash UI)
 - Lỗi Auth: dispatch `SET_ERROR` để hiển thị cho user
 - Không dùng `try/catch` bao toàn bộ component render
 
 ## Security
 
 - Markdown từ user render qua `marked` + `dompurify` (XSS safe)
-- API key Supabase là `anon` key — public by design, bảo vệ bằng RLS
+- API key Firebase là public by design — bảo vệ bằng Firestore Security Rules + HTTP referrer restriction (Google Cloud Console)
 - Không lưu sensitive data trong localStorage
 
 ## Accessibility
@@ -127,7 +131,7 @@ Không bao giờ chỉ check ở frontend mà bỏ DB.
 ## Quy tắc thêm tính năng mới
 
 1. Thêm action vào `ACTION_PERMISSION_MAP` nếu cần permission guard
-2. Thêm RLS policy tương ứng vào `supabase/schema.sql`
+2. Thêm Security Rule tương ứng vào `firebase/firestore.rules` (và deploy lại)
 3. Thêm reducer case vào context tương ứng
 4. Component lấy data qua context hook, không fetch trực tiếp
 5. Ghi log vào changelog nếu là action có side effect

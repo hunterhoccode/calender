@@ -20,7 +20,7 @@ function decodeFields(fields) {
   return out;
 }
 
-export function decodeDoc(doc) {
+function decodeDoc(doc) {
   if (!doc) return null;
   const id = doc.name.split('/').pop();
   return { id, ...decodeFields(doc.fields || {}) };

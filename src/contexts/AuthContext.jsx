@@ -7,7 +7,7 @@ import {
   onAuthStateChanged,
 } from 'firebase/auth';
 import {
-  doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc,
+  doc, getDocs, setDoc, updateDoc, deleteDoc,
   collection, query, orderBy, serverTimestamp,
 } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
